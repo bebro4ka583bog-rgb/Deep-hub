@@ -339,12 +339,12 @@ ToggleButton.MouseButton1Click:Connect(function()
     ToggleButton.Visible = false
 end)
 
--- Keybind to open/close UI
+-- Keybind to open/close UI - Changed to R key
 UserInputService.InputBegan:Connect(function(Input, Processed)
-    if not Processed and Input.KeyCode == Enum.KeyCode.RightShift then
+    if not Processed and Input.KeyCode == Enum.KeyCode.R then
         MainFrame.Visible = not MainFrame.Visible
         ToggleButton.Visible = not MainFrame.Visible
     end
 end)
 
-print("Deephub loaded successfully! Press RightShift to open/close the menu.")
+print("Deephub loaded successfully! Press R to open/close the menu.")
