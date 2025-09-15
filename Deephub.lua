@@ -1,4 +1,4 @@
--- Deephub Script for Blox Fruits with Sharkman Karate Auto Farm
+-- Deephub Script for Blox Fruits with Redz Hub features
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -7,6 +7,7 @@ local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local HttpService = game:GetService("HttpService")
+local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
@@ -17,8 +18,8 @@ ScreenGui.Parent = game.CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 500, 0, 450)
-MainFrame.Position = UDim2.new(0.5, -250, 0.5, -225)
+MainFrame.Size = UDim2.new(0, 500, 0, 500)
+MainFrame.Position = UDim2.new(0.5, -250, 0.5, -250)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -33,7 +34,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Title.Text = "Deephub v3.5 - Blox Fruits"
+Title.Text = "Deephub v4.0 - Redz Edition"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
@@ -61,13 +62,13 @@ ToggleButton.Visible = false
 ToggleButton.Parent = ScreenGui
 
 local TabButtonsFrame = Instance.new("Frame")
-TabButtonsFrame.Size = UDim2.new(0, 130, 0, 360)
+TabButtonsFrame.Size = UDim2.new(0, 130, 0, 410)
 TabButtonsFrame.Position = UDim2.new(0, 10, 0, 50)
 TabButtonsFrame.BackgroundTransparency = 1
 TabButtonsFrame.Parent = MainFrame
 
 local TabsFrame = Instance.new("Frame")
-TabsFrame.Size = UDim2.new(0, 340, 0, 360)
+TabsFrame.Size = UDim2.new(0, 340, 0, 410)
 TabsFrame.Position = UDim2.new(0, 150, 0, 50)
 TabsFrame.BackgroundTransparency = 1
 TabsFrame.ClipsDescendants = true
@@ -80,9 +81,11 @@ local Tabs = {
     Visuals = {Name = "Visuals", Color = Color3.fromRGB(80, 120, 220)},
     Farming = {Name = "Farming", Color = Color3.fromRGB(220, 180, 60)},
     Sharkman = {Name = "Sharkman", Color = Color3.fromRGB(0, 150, 200)},
+    AutoFarm = {Name = "Auto Farm", Color = Color3.fromRGB(180, 100, 100)},
     Misc = {Name = "Misc", Color = Color3.fromRGB(180, 100, 220)}
 }
 
+-- Variables
 local CurrentTab = "Combat"
 local Connections = {}
 local Enabled = {
@@ -96,30 +99,33 @@ local Enabled = {
     AutoClick = false,
     NoClip = false,
     SharkmanFarm = false,
-    InfiniteEnergy = false
+    InfiniteEnergy = false,
+    AutoGodHuman = false,
+    AutoMaterialFarm = false
 }
 
--- Blox Fruits Variables
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-
--- Sharkman Karate Variables
-local SharkmanMaster = nil
-local CurrentHeadband = nil
-local HeadbandsRequired = {
-    "Headband (Green)",
-    "Headband (Blue)", 
-    "Headband (Red)",
-    "Headband (Yellow)",
-    "Headband (Purple)",
-    "Headband (Orange)",
-    "Headband (Brown)",
-    "Headband (White)",
-    "Headband (Black)"
+local FarmMaterials = {
+    "Elite Hunter",
+    "Fish Tail",
+    "Scrap Metal",
+    "Magma Ore",
+    "Angel Wings",
+    "Demonic Wings",
+    "Dragon Scale",
+    "Leviathan Scale",
+    "Vampire Fang",
+    "Conjured Cocoa",
+    "Gunpowder",
+    "Mini Tusk",
+    "Radioactive Material",
+    "Spikey Trident",
+    "Ectoplasm",
+    "Bones",
+    "Dark Fragment",
+    "God's Chalice"
 }
 
--- Redz Hub Features
+local SelectedMaterial = "Elite Hunter"
 local AimBotTarget = nil
 local ESPObjects = {}
 local FarmConnection = nil
@@ -127,8 +133,27 @@ local ClickConnection = nil
 local NoclipConnection = nil
 local FlyConnection = nil
 local SharkmanConnection = nil
+local MaterialFarmConnection = nil
+local GodHumanConnection = nil
 
--- Functions
+-- Character initialization
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+-- Correct Headbands order for Sharkman Karate
+local HeadbandsRequired = {
+    "Headband (White)",
+    "Headband (Yellow)",
+    "Headband (Orange)",
+    "Headband (Green)",
+    "Headband (Blue)",
+    "Headband (Purple)",
+    "Headband (Red)",
+    "Headband (Black)"
+}
+
+-- UI Creation Functions
 local function CreateTabButton(TabName, Position)
     local Button = Instance.new("TextButton")
     Button.Size = UDim2.new(0, 120, 0, 30)
@@ -223,104 +248,45 @@ local function CreateLabel(Text, Parent)
     return Label
 end
 
--- Sharkman Karate Functions
-local function FindSharkmanMaster()
-    for _, NPC in pairs(Workspace:GetChildren()) do
-        if NPC.Name == "Sharkman" and NPC:FindFirstChild("Humanoid") then
-            return NPC
-        end
-    end
-    return nil
-end
-
-local function GetCurrentHeadband()
-    -- Check player's inventory for headbands
-    local Backpack = LocalPlayer:FindFirstChild("Backpack")
-    local Character = LocalPlayer.Character
+local function CreateDropdown(Name, Parent, Options, Callback)
+    local DropdownFrame = Instance.new("Frame")
+    DropdownFrame.Size = UDim2.new(1, 0, 0, 40)
+    DropdownFrame.BackgroundTransparency = 1
+    DropdownFrame.Parent = Parent
     
-    if Backpack then
-        for _, Item in pairs(Backpack:GetChildren()) do
-            if string.find(Item.Name, "Headband") then
-                return Item.Name
-            end
-        end
-    end
+    local Title = CreateLabel(Name, DropdownFrame)
     
-    if Character then
-        for _, Item in pairs(Character:GetChildren()) do
-            if string.find(Item.Name, "Headband") then
-                return Item.Name
-            end
-        end
-    end
+    local DropdownButton = Instance.new("TextButton")
+    DropdownButton.Size = UDim2.new(1, 0, 0, 25)
+    DropdownButton.Position = UDim2.new(0, 0, 0, 20)
+    DropdownButton.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    DropdownButton.Text = Options[1]
+    DropdownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropdownButton.Font = Enum.Font.Gotham
+    DropdownButton.TextSize = 12
+    DropdownButton.Parent = DropdownFrame
     
-    return nil
-end
-
-local function GetNextHeadband()
-    local Current = CurrentHeadband or "None"
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 4)
+    Corner.Parent = DropdownButton
     
-    for i, Headband in ipairs(HeadbandsRequired) do
-        if Current == Headband then
-            if i < #HeadbandsRequired then
-                return HeadbandsRequired[i + 1]
-            else
-                return "COMPLETED"
-            end
-        end
-    end
-    
-    return HeadbandsRequired[1] -- Start with first headband
-end
-
-local function TeleportToSharkman()
-    SharkmanMaster = FindSharkmanMaster()
-    if SharkmanMaster and SharkmanMaster:FindFirstChild("HumanoidRootPart") then
-        HumanoidRootPart.CFrame = SharkmanMaster.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
-        return true
-    end
-    return false
-end
-
-local function SharkmanFarmFunction(State)
-    if State then
-        SharkmanConnection = RunService.Heartbeat:Connect(function()
-            if Enabled.SharkmanFarm then
-                CurrentHeadband = GetCurrentHeadband()
-                local NextHeadband = GetNextHeadband()
-                
-                if NextHeadband == "COMPLETED" then
-                    print("Sharkman Karate training completed!")
-                    Enabled.SharkmanFarm = false
-                    return
+    DropdownButton.MouseButton1Click:Connect(function()
+        for i, Option in ipairs(Options) do
+            if DropdownButton.Text == Option then
+                local NextOption = Options[(i % #Options) + 1]
+                DropdownButton.Text = NextOption
+                if Callback then
+                    Callback(NextOption)
                 end
-                
-                -- Teleport to Sharkman Master
-                if TeleportToSharkman() then
-                    -- Simulate talking to NPC (this would need actual remote events)
-                    -- For now, just show status
-                    print("Training Sharkman Karate... Current: " .. (CurrentHeadband or "None") .. " | Next: " .. NextHeadband)
-                    
-                    -- Auto farm the required headband if not owned
-                    if not CurrentHeadband or CurrentHeadband ~= NextHeadband then
-                        -- This would need actual farming logic for each headband
-                        print("Need to farm: " .. NextHeadband)
-                    end
-                else
-                    print("Sharkman Master not found!")
-                end
-                
-                wait(2) -- Prevent spamming
+                break
             end
-        end)
-    else
-        if SharkmanConnection then
-            SharkmanConnection:Disconnect()
         end
-    end
+    end)
+    
+    return DropdownFrame
 end
 
--- Redz Hub Functions (остальные функции остаются без изменений)
+-- Functional Functions
 local function AimBotFunction(State)
     if State then
         Connections.AimBot = RunService.RenderStepped:Connect(function()
@@ -328,7 +294,7 @@ local function AimBotFunction(State)
             local ClosestDistance = math.huge
             
             for _, Player in pairs(Players:GetPlayers()) do
-                if Player ~= LocalPlayer and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+                if Player ~= LocalPlayer and Player.Character and Player.Character:FindFirstChild("Humanoid") and Player.Character.Humanoid.Health > 0 then
                     local Distance = (Player.Character.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
                     if Distance < ClosestDistance then
                         ClosestDistance = Distance
@@ -339,41 +305,241 @@ local function AimBotFunction(State)
             
             if ClosestPlayer and ClosestPlayer.Character and ClosestPlayer.Character:FindFirstChild("HumanoidRootPart") then
                 AimBotTarget = ClosestPlayer.Character.HumanoidRootPart
-                if AimBotTarget then
-                    local Camera = Workspace.CurrentCamera
-                    Camera.CFrame = CFrame.new(Camera.CFrame.Position, AimBotTarget.Position)
-                end
             end
         end)
     else
         if Connections.AimBot then
             Connections.AimBot:Disconnect()
-            AimBotTarget = nil
         end
+        AimBotTarget = nil
     end
 end
 
 local function ESPFunction(State)
-    -- ... (остальной код ESP) ...
+    if State then
+        local function CreateESP(Character)
+            if Character ~= LocalPlayer.Character and not ESPObjects[Character] then
+                local Highlight = Instance.new("Highlight")
+                Highlight.Name = "DeephubESP"
+                Highlight.Adornee = Character
+                Highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                Highlight.FillTransparency = 0.5
+                Highlight.Parent = Character
+                ESPObjects[Character] = Highlight
+            end
+        end
+        
+        for _, Player in pairs(Players:GetPlayers()) do
+            if Player.Character then
+                CreateESP(Player.Character)
+            end
+        end
+        
+        Connections.ESPAdded = Players.PlayerAdded:Connect(function(Player)
+            Player.CharacterAdded:Connect(function(Character)
+                if Enabled.ESP then
+                    CreateESP(Character)
+                end
+            end)
+        end)
+    else
+        for Character, Highlight in pairs(ESPObjects) do
+            if Highlight then
+                Highlight:Destroy()
+            end
+        end
+        ESPObjects = {}
+        
+        if Connections.ESPAdded then
+            Connections.ESPAdded:Disconnect()
+        end
+    end
 end
 
 local function FlyFunction(State)
-    -- ... (остальной код Fly) ...
+    if State then
+        local BodyGyro = Instance.new("BodyGyro")
+        BodyGyro.P = 1000
+        BodyGyro.D = 100
+        BodyGyro.MaxTorque = Vector3.new(100000, 100000, 100000)
+        BodyGyro.CFrame = HumanoidRootPart.CFrame
+        BodyGyro.Parent = HumanoidRootPart
+        
+        local BodyVelocity = Instance.new("BodyVelocity")
+        BodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        BodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
+        BodyVelocity.Parent = HumanoidRootPart
+        
+        FlyConnection = RunService.Heartbeat:Connect(function()
+            if not Enabled.Fly then return end
+            
+            local Camera = Workspace.CurrentCamera
+            BodyGyro.CFrame = Camera.CFrame
+            
+            local FlySpeed = 100
+            local Velocity = Vector3.new(0, 0, 0)
+            
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                Velocity = Velocity + Camera.CFrame.LookVector * FlySpeed
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                Velocity = Velocity - Camera.CFrame.LookVector * FlySpeed
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                Velocity = Velocity - Camera.CFrame.RightVector * FlySpeed
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                Velocity = Velocity + Camera.CFrame.RightVector * FlySpeed
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                Velocity = Velocity + Vector3.new(0, FlySpeed, 0)
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+                Velocity = Velocity - Vector3.new(0, FlySpeed, 0)
+            end
+            
+            BodyVelocity.Velocity = Velocity
+        end)
+    else
+        if FlyConnection then
+            FlyConnection:Disconnect()
+        end
+        for _, Part in pairs(Character:GetDescendants()) do
+            if Part:IsA("BodyVelocity") or Part:IsA("BodyGyro") then
+                Part:Destroy()
+            end
+        end
+    end
 end
 
 local function NoclipFunction(State)
-    -- ... (остальной код Noclip) ...
+    if State then
+        NoclipConnection = RunService.Stepped:Connect(function()
+            if Character then
+                for _, Part in pairs(Character:GetDescendants()) do
+                    if Part:IsA("BasePart") then
+                        Part.CanCollide = false
+                    end
+                end
+            end
+        end)
+    else
+        if NoclipConnection then
+            NoclipConnection:Disconnect()
+        end
+    end
 end
 
 local function SpeedHackFunction(State)
-    -- ... (остальной код SpeedHack) ...
+    if State then
+        Humanoid.WalkSpeed = 50
+    else
+        Humanoid.WalkSpeed = 16
+    end
 end
 
-local function AutoFarmFunction(State)
-    -- ... (остальной код AutoFarm) ...
+local function AutoClickFunction(State)
+    if State then
+        ClickConnection = RunService.Heartbeat:Connect(function()
+            if Enabled.AutoClick and AimBotTarget then
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                wait(0.1)
+                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+            end
+        end)
+    else
+        if ClickConnection then
+            ClickConnection:Disconnect()
+        end
+    end
 end
 
--- Create Tabs and UI Elements
+local function MaterialFarmFunction(State)
+    if State then
+        MaterialFarmConnection = RunService.Heartbeat:Connect(function()
+            if not Enabled.AutoMaterialFarm then return end
+            
+            for _, Item in pairs(Workspace:GetChildren()) do
+                if Item.Name == SelectedMaterial and Item:IsA("Part") then
+                    local Distance = (Item.Position - HumanoidRootPart.Position).Magnitude
+                    if Distance < 100 then
+                        HumanoidRootPart.CFrame = Item.CFrame
+                        break
+                    end
+                end
+            end
+        end)
+    else
+        if MaterialFarmConnection then
+            MaterialFarmConnection:Disconnect()
+        end
+    end
+end
+
+local function AutoGodHumanFunction(State)
+    if State then
+        GodHumanConnection = RunService.Heartbeat:Connect(function()
+            if not Enabled.AutoGodHuman then return end
+            
+            -- Auto farm all required materials for God Human
+            local GodHumanMaterials = {
+                "Elite Hunter", "Fish Tail", "Scrap Metal", "Magma Ore",
+                "Angel Wings", "Demonic Wings", "Dragon Scale", "Leviathan Scale"
+            }
+            
+            for _, Material in pairs(GodHumanMaterials) do
+                for _, Item in pairs(Workspace:GetChildren()) do
+                    if Item.Name == Material and Item:IsA("Part") then
+                        local Distance = (Item.Position - HumanoidRootPart.Position).Magnitude
+                        if Distance < 100 then
+                            HumanoidRootPart.CFrame = Item.CFrame
+                            return
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        if GodHumanConnection then
+            GodHumanConnection:Disconnect()
+        end
+    end
+end
+
+-- Sharkman Functions
+local function GetCurrentHeadband()
+    local Backpack = LocalPlayer:FindFirstChild("Backpack")
+    if Backpack then
+        for _, Item in pairs(Backpack:GetChildren()) do
+            if string.find(Item.Name, "Headband") then
+                return Item.Name
+            end
+        end
+    end
+    return nil
+end
+
+local function SharkmanFarmFunction(State)
+    if State then
+        SharkmanConnection = RunService.Heartbeat:Connect(function()
+            if not Enabled.SharkmanFarm then return end
+            
+            local Current = GetCurrentHeadband()
+            local SharkmanNPC = Workspace:FindFirstChild("Sharkman")
+            
+            if SharkmanNPC and SharkmanNPC:FindFirstChild("HumanoidRootPart") then
+                HumanoidRootPart.CFrame = SharkmanNPC.HumanoidRootPart.CFrame * CFrame.new(0, 3, 5)
+            end
+        end)
+    else
+        if SharkmanConnection then
+            SharkmanConnection:Disconnect()
+        end
+    end
+end
+
+-- Create Tabs and UI
 local YPosition = 0
 for TabName, _ in pairs(Tabs) do
     CreateTabButton(TabName, UDim2.new(0, 0, 0, YPosition))
@@ -385,40 +551,43 @@ local MovementTab = CreateTab("Movement")
 local VisualsTab = CreateTab("Visuals")
 local FarmingTab = CreateTab("Farming")
 local SharkmanTab = CreateTab("Sharkman")
+local AutoFarmTab = CreateTab("Auto Farm")
 local MiscTab = CreateTab("Misc")
 
--- Combat Tab Elements
+-- Combat Tab
 CreateToggle("AimBot", CombatTab, AimBotFunction)
-CreateToggle("AutoClick", CombatTab, function(State)
-    -- Auto click function
-end)
+CreateToggle("AutoClick", CombatTab, AutoClickFunction)
 
--- Movement Tab Elements
+-- Movement Tab
 CreateToggle("SpeedHack", MovementTab, SpeedHackFunction)
 CreateToggle("Fly", MovementTab, FlyFunction)
 CreateToggle("Noclip", MovementTab, NoclipFunction)
 
--- Sharkman Tab Elements
+-- Visuals Tab
+CreateToggle("ESP", VisualsTab, ESPFunction)
+CreateToggle("WallHack", VisualsTab, function(State)
+    if State then
+        Lighting.GlobalShadows = false
+    else
+        Lighting.GlobalShadows = true
+    end
+end)
+
+-- Auto Farm Tab
+CreateToggle("Auto Material Farm", AutoFarmTab, MaterialFarmFunction)
+CreateDropdown("Select Material", AutoFarmTab, FarmMaterials, function(Material)
+    SelectedMaterial = Material
+end)
+CreateToggle("Auto God Human", AutoFarmTab, AutoGodHumanFunction)
+
+-- Sharkman Tab
 CreateToggle("Auto Sharkman", SharkmanTab, SharkmanFarmFunction)
 CreateLabel("Headbands Progression:", SharkmanTab)
-
 for i, Headband in ipairs(HeadbandsRequired) do
     CreateLabel(i .. ". " .. Headband, SharkmanTab)
 end
 
-local StatusLabel = CreateLabel("Status: Not started", SharkmanTab)
-StatusLabel.Name = "StatusLabel"
-
--- Visuals Tab Elements
-CreateToggle("ESP", VisualsTab, ESPFunction)
-CreateToggle("WallHack", VisualsTab, function(State)
-    -- Wallhack function
-end)
-
--- Farming Tab Elements
-CreateToggle("AutoFarm", FarmingTab, AutoFarmFunction)
-
--- Misc Tab Elements
+-- Misc Tab
 local UnloadButton = Instance.new("TextButton")
 UnloadButton.Size = UDim2.new(1, -20, 0, 30)
 UnloadButton.Position = UDim2.new(0, 10, 0, 0)
@@ -433,10 +602,6 @@ UnloadButton.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
     for _, Connection in pairs(Connections) do
         Connection:Disconnect()
-    end
-    for _, Connection in pairs({FarmConnection, ClickConnection, NoclipConnection, FlyConnection, SharkmanConnection}) do
-        if Connection then
-            Connection:Disconnect()
         end
     end
 end)
@@ -452,7 +617,7 @@ ToggleButton.MouseButton1Click:Connect(function()
     ToggleButton.Visible = false
 end)
 
--- Keybind to open/close UI
+-- Keybind
 UserInputService.InputBegan:Connect(function(Input, Processed)
     if not Processed and Input.KeyCode == Enum.KeyCode.R then
         MainFrame.Visible = not MainFrame.Visible
@@ -460,24 +625,17 @@ UserInputService.InputBegan:Connect(function(Input, Processed)
     end
 end)
 
--- Update Sharkman status
-spawn(function()
-    while wait(2) do
-        if SharkmanTab:FindFirstChild("StatusLabel") then
-            CurrentHeadband = GetCurrentHeadband()
-            local NextHeadband = GetNextHeadband()
-            
-            if NextHeadband == "COMPLETED" then
-                SharkmanTab.StatusLabel.Text = "Status: COMPLETED! 🎉"
-            else
-                SharkmanTab.StatusLabel.Text = "Status: Current: " .. (CurrentHeadband or "None") .. " | Next: " .. NextHeadband
-            end
-        end
+-- Character reconnection
+LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
+    Character = NewCharacter
+    Humanoid = NewCharacter:WaitForChild("Humanoid")
+    HumanoidRootPart = NewCharacter:WaitForChild("HumanoidRootPart")
+    
+    if Enabled.SpeedHack then
+        Humanoid.WalkSpeed = 50
     end
 end)
 
-print("Deephub Sharkman Edition loaded! Press R to open menu.")
-print("Sharkman Karate requires 9 headbands in order:")
-for i, Headband in ipairs(HeadbandsRequired) do
-    print(i .. ". " .. Headband)
-end
+print("deep Hub loaded! Press R to open menu")
+```
+         
