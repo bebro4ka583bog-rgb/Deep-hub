@@ -636,6 +636,6 @@ LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
     end
 end)
 
-print("deep Hub loaded! Press R to open menu")
+print("Redz Hub loaded! Press R to open menu")
 ```
          
