@@ -30,7 +30,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Title.Text = "Deep Hub v4.2 - AI Sharkman System"
+Title.Text = "Deep Hub v4.3 - AI Sharkman System"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
@@ -286,6 +286,67 @@ local function CreateDropdown(Name, Parent, Options, Callback)
     end)
     
     return DropdownFrame
+end
+
+-- Функции из вашего скрипта (добавлены ползунки)
+local function CreateSlider(Name, Parent, Min, Max, Default, Callback)
+    local SliderFrame = Instance.new("Frame")
+    SliderFrame.Size = UDim2.new(1, 0, 0, 50)
+    SliderFrame.BackgroundTransparency = 1
+    SliderFrame.Parent = Parent
+    
+    local Title = CreateLabel(Name .. ": " .. Default, SliderFrame)
+    Title.Name = "TitleLabel"
+    
+    local Slider = Instance.new("Frame")
+    Slider.Size = UDim2.new(1, -10, 0, 10)
+    Slider.Position = UDim2.new(0, 5, 0, 30)
+    Slider.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    Slider.Parent = SliderFrame
+    
+    local Fill = Instance.new("Frame")
+    Fill.Size = UDim2.new((Default - Min) / (Max - Min), 0, 1, 0)
+    Fill.BackgroundColor3 = Color3.fromRGB(80, 120, 220)
+    Fill.Parent = Slider
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 5)
+    Corner.Parent = Slider
+    Corner.Parent = Fill
+    
+    local Value = Default
+    local Dragging = false
+    
+    local function UpdateSlider(X)
+        local RelativeX = math.clamp(X - Slider.AbsolutePosition.X, 0, Slider.AbsoluteSize.X)
+        Value = math.floor(Min + (RelativeX / Slider.AbsoluteSize.X) * (Max - Min))
+        Fill.Size = UDim2.new(RelativeX / Slider.AbsoluteSize.X, 0, 1, 0)
+        Title.Text = Name .. ": " .. Value
+        if Callback then
+            Callback(Value)
+        end
+    end
+    
+    Slider.InputBegan:Connect(function(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+            Dragging = true
+            UpdateSlider(Input.Position.X)
+        end
+    end)
+    
+    Slider.InputEnded:Connect(function(Input)
+        if Input.UserInputType == Enum.UserInputType.MouseButton1 then
+            Dragging = false
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(Input)
+        if Dragging and Input.UserInputType == Enum.UserInputType.MouseMovement then
+            UpdateSlider(Input.Position.X)
+        end
+    end)
+    
+    return SliderFrame
 end
 
 -- Sharkman Functions
@@ -726,10 +787,21 @@ CreateDropdown("Select Material", FarmingTab, FarmMaterials, function(Material)
     SelectedMaterial = Material
 end)
 
--- Sharkman AI Tab (РАБОЧИЕ ФУНКЦИИ!)
+-- Sharkman AI Tab (РАБОЧИЕ ФУНКЦИИ + ПОЛЗУНКИ!)
 CreateToggle("AI Sharkman System", SharkmanTab, SharkmanAISystem)
 CreateToggle("Sharkman Farm", SharkmanTab, SharkmanFarmFunction)
 CreateToggle("Auto Training", SharkmanTab, AutoTrainingFunction)
+
+-- Добавлены ползунки из вашего скрипта
+CreateSlider("Battle Speed", SharkmanTab, 1, 10, 5, function(Value)
+    ActionCooldown = 2 - (Value / 10)
+    print("Battle speed set to: " .. Value)
+end)
+
+CreateSlider("Accuracy", SharkmanTab, 50, 100, 90, function(Value)
+    SuccessRate = Value / 100
+    print("Accuracy set to: " .. Value .. "%")
+end)
 
 CreateLabel("AI Status: READY", SharkmanTab)
 local AIStatusLabel = CreateLabel("State: " .. CurrentAIState, SharkmanTab)
@@ -827,6 +899,7 @@ end)
 
 print("🤖 Deep Hub AI System Loaded!")
 print("✅ Все функции Sharkman AI теперь РАБОЧИЕ!")
+print("🎯 Добавлены ползунки: Battle Speed и Accuracy")
 print("🎯 AI Sharkman System - автономный поиск и взаимодействие")
 print("🎯 Sharkman Farm - автоматический фарм у NPC")
 print("🎯 Auto Training - идеальные атаки в битвах")
