@@ -30,7 +30,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Title.Text = "Deep Hub v4.3 - AI Sharkman System"
+Title.Text = "Deep Hub v4.4 - AI Sharkman System"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
@@ -175,7 +175,7 @@ local function CreateTabButton(TabName, Position)
         CurrentTab = TabName
         for _, Tab in pairs(TabsFrame:GetChildren()) do
             if Tab:IsA("Frame") then
-                Tab.Visible = Tab.Name == TabName
+                Tab.Visible = (Tab.Name == TabName)
             end
         end
     end)
@@ -188,7 +188,7 @@ local function CreateTab(TabName)
     Tab.Name = TabName
     Tab.Size = UDim2.new(1, 0, 1, 0)
     Tab.BackgroundTransparency = 1
-    Tab.Visible = TabName == "Sharkman"
+    Tab.Visible = (TabName == "Sharkman")
     Tab.Parent = TabsFrame
     
     local Layout = Instance.new("UIListLayout")
