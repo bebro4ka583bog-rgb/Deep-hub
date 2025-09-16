@@ -30,7 +30,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Title.Text = "Deep Hub v3.0 - Sharkman Auto"
+Title.Text = "Deep Hub v3.1 - Sharkman Auto"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
@@ -108,6 +108,8 @@ local HeadbandsRequired = {
 local SharkmanConnection = nil
 local FishBattleConnection = nil
 local CurrentBattleState = "Idle"
+local LastActionTime = 0
+local ActionCooldown = 2
 
 -- Character initialization
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -211,11 +213,19 @@ end
 
 -- Sharkman Fish Battle Functions
 local function FindSharkmanMaster()
-    for _, NPC in pairs(Workspace:GetChildren()) do
-        if (NPC.Name:find("Sharkman") or NPC.Name:find("Shark Man")) and NPC:FindFirstChild("Humanoid") then
+    for _, NPC in pairs(Workspace.NPCs:GetChildren()) do
+        if (NPC.Name:find("Sharkman") or NPC.Name:find("Shark") or NPC.Name:find("Master")) and NPC:FindFirstChild("Humanoid") then
             return NPC
         end
     end
+    
+    -- Search in entire workspace as fallback
+    for _, NPC in pairs(Workspace:GetChildren()) do
+        if (NPC.Name:find("Sharkman") or NPC.Name:find("Shark") or NPC.Name:find("Master")) and NPC:FindFirstChild("Humanoid") then
+            return NPC
+        end
+    end
+    
     return nil
 end
 
@@ -258,105 +268,59 @@ local function GetNextHeadband()
     return HeadbandsRequired[1]
 end
 
-local function ClickButton(ButtonName)
-    -- Simulate clicking a button in the Fish Battle UI
-    local Gui = LocalPlayer.PlayerGui:FindFirstChildOfClass("ScreenGui")
-    if Gui then
-        for _, Frame in pairs(Gui:GetDescendants()) do
-            if Frame:IsA("TextButton") and Frame.Name:find(ButtonName) then
-                local AbsolutePosition = Frame.AbsolutePosition
-                local AbsoluteSize = Frame.AbsoluteSize
-                
-                -- Click the center of the button
-                local X = AbsolutePosition.X + AbsoluteSize.X / 2
-                local Y = AbsolutePosition.Y + AbsoluteSize.Y / 2
-                
-                mouse1click(X, Y)
-                return true
-            end
+local function ClickAtPosition(x, y)
+    -- Simulate mouse click at screen position
+    mouse1click(x, y)
+end
+
+local function FindAndClickButton(buttonName)
+    local gui = LocalPlayer.PlayerGui:FindFirstChildOfClass("ScreenGui")
+    if not gui then return false end
+    
+    for _, element in pairs(gui:GetDescendants()) do
+        if element:IsA("TextButton") and (element.Text:lower():find(buttonName:lower()) or element.Name:lower():find(buttonName:lower())) then
+            local absPos = element.AbsolutePosition
+            local absSize = element.AbsoluteSize
+            local centerX = absPos.X + absSize.X / 2
+            local centerY = absPos.Y + absSize.Y / 2
+            
+            ClickAtPosition(centerX, centerY)
+            return true
         end
     end
     return false
 end
 
-local function FindFishBattleUI()
-    local Gui = LocalPlayer.PlayerGui:FindFirstChildOfClass("ScreenGui")
-    if Gui then
-        for _, Frame in pairs(Gui:GetDescendants()) do
-            if Frame:IsA("Frame") and (Frame.Name:find("Fish") or Frame.Name:find("Battle")) then
-                return Frame
-            end
+local function IsDialogOpen()
+    local gui = LocalPlayer.PlayerGui:FindFirstChildOfClass("ScreenGui")
+    if not gui then return false end
+    
+    for _, element in pairs(gui:GetDescendants()) do
+        if element:IsA("TextLabel") and (element.Text:find("Train") or element.Text:find("Sharkman") or element.Text:find("Master")) then
+            return true
         end
-    end
-    return nil
-end
-
-local function FindSliderInUI()
-    local Gui = LocalPlayer.PlayerGui:FindFirstChildOfClass("ScreenGui")
-    if Gui then
-        for _, Frame in pairs(Gui:GetDescendants()) do
-            if Frame:IsA("Frame") and Frame.Name:find("Slider") then
-                return Frame
-            end
-        end
-    end
-    return nil
-end
-
-local function IsSliderInGreenZone()
-    local Slider = FindSliderInUI()
-    if Slider then
-        -- Check if slider is in green zone (this would need actual position checking)
-        -- For now, we'll simulate perfect timing with random delay
-        return true
     end
     return false
 end
 
-local function PerformFishBattle()
-    local BattleUI = FindFishBattleUI()
-    if not BattleUI then
-        return "NoUI"
-    end
+local function IsFishBattleActive()
+    local gui = LocalPlayer.PlayerGui:FindFirstChildOfClass("ScreenGui")
+    if not gui then return false end
     
-    -- Check current battle state and perform appropriate action
-    if CurrentBattleState == "Idle" then
-        if ClickButton("Train") then
-            CurrentBattleState = "TrainingSelected"
-            return "TrainingSelected"
-        end
-    elseif CurrentBattleState == "TrainingSelected" then
-        if ClickButton("StartTraining") or ClickButton("Start") then
-            CurrentBattleState = "BattleStarted"
-            return "BattleStarted"
-        end
-    elseif CurrentBattleState == "BattleStarted" then
-        -- Select fish for battle
-        if ClickButton("Select") or ClickButton("Fish") then
-            CurrentBattleState = "FishSelected"
-            return "FishSelected"
-        end
-    elseif CurrentBattleState == "FishSelected" then
-        -- Check if it's time to attack or dodge
-        if IsSliderInGreenZone() then
-            if math.random(1, 2) == 1 then
-                if ClickButton("Attack") then
-                    return "Attacked"
-                end
-            else
-                if ClickButton("Dodge") then
-                    return "Dodged"
-                end
-            end
-        end
-    elseif CurrentBattleState == "BattleWon" then
-        if ClickButton("Continue") or ClickButton("Next") then
-            CurrentBattleState = "Idle"
-            return "Continued"
+    for _, element in pairs(gui:GetDescendants()) do
+        if element:IsA("TextButton") and (element.Text:find("Attack") or element.Text:find("Dodge") or element.Text:find("Select")) then
+            return true
         end
     end
-    
-    return "Waiting"
+    return false
+end
+
+local function PerformRandomBattleAction()
+    if math.random(1, 2) == 1 then
+        FindAndClickButton("Attack")
+    else
+        FindAndClickButton("Dodge")
+    end
 end
 
 local function SharkmanAutoFunction(State)
@@ -364,50 +328,53 @@ local function SharkmanAutoFunction(State)
         SharkmanConnection = RunService.Heartbeat:Connect(function()
             if not Enabled.SharkmanAuto then return end
             
+            local currentTime = tick()
+            if currentTime - LastActionTime < ActionCooldown then return end
+            
             local SharkmanNPC = FindSharkmanMaster()
             
-            if SharkmanNPC and SharkmanNPC:FindFirstChild("HumanoidRootPart") then
-                -- Teleport to Sharkman Master
-                local Distance = (SharkmanNPC.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
-                if Distance > 10 then
-                    HumanoidRootPart.CFrame = SharkmanNPC.HumanoidRootPart.CFrame * CFrame.new(0, 3, 5)
-                    return
+            if not SharkmanNPC then
+                print("Sharkman Master not found! Searching...")
+                return
+            end
+            
+            -- Check if we're in dialog or battle
+            if IsDialogOpen() then
+                -- In dialog, click Train options
+                if FindAndClickButton("Train") or FindAndClickButton("Start") or FindAndClickButton("Training") then
+                    LastActionTime = currentTime
+                    CurrentBattleState = "InDialog"
+                    print("Clicked dialog option")
                 end
+            elseif IsFishBattleActive() then
+                -- In fish battle, perform actions
+                PerformRandomBattleAction()
+                LastActionTime = currentTime
+                CurrentBattleState = "InBattle"
+                print("Performed battle action")
+            else
+                -- Not in dialog or battle, move to Sharkman and interact
+                local distance = (SharkmanNPC.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
                 
-                -- Check if we're in Fish Battle
-                local BattleUI = FindFishBattleUI()
-                if BattleUI then
-                    PerformFishBattle()
+                if distance > 10 then
+                    -- Move closer to Sharkman
+                    HumanoidRootPart.CFrame = SharkmanNPC.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
+                    CurrentBattleState = "MovingToNPC"
+                    print("Moving to Sharkman Master")
                 else
-                    -- Not in battle, try to start interaction
-                    CurrentBattleState = "Idle"
-                    
-                    -- Face the NPC
+                    -- Close enough, try to interact
                     HumanoidRootPart.CFrame = CFrame.new(HumanoidRootPart.Position, SharkmanNPC.HumanoidRootPart.Position)
                     
-                    -- Simulate clicking on NPC to start dialogue
-                    if math.random(1, 20) == 1 then -- Click occasionally
-                        mouse1click()
-                    end
-                end
-            else
-                print("Sharkman Master not found!")
-            end
-        end)
-        
-        -- Separate connection for Fish Battle timing
-        FishBattleConnection = RunService.Heartbeat:Connect(function()
-            if not Enabled.SharkmanAuto then return end
-            
-            local BattleUI = FindFishBattleUI()
-            if BattleUI then
-                local Result = PerformFishBattle()
-                
-                -- Check if battle is won and we need to continue
-                if Result == "Attacked" or Result == "Dodged" then
-                    -- Small chance to win the battle
-                    if math.random(1, 5) == 1 then
-                        CurrentBattleState = "BattleWon"
+                    -- Click on NPC to start dialog
+                    local npcHead = SharkmanNPC:FindFirstChild("Head")
+                    if npcHead then
+                        local screenPoint = Workspace.CurrentCamera:WorldToViewportPoint(npcHead.Position)
+                        if screenPoint.Z > 0 then
+                            ClickAtPosition(screenPoint.X, screenPoint.Y)
+                            LastActionTime = currentTime
+                            CurrentBattleState = "Interacting"
+                            print("Clicked on Sharkman Master")
+                        end
                     end
                 end
             end
@@ -416,10 +383,8 @@ local function SharkmanAutoFunction(State)
         if SharkmanConnection then
             SharkmanConnection:Disconnect()
         end
-        if FishBattleConnection then
-            FishBattleConnection:Disconnect()
-        end
         CurrentBattleState = "Idle"
+        print("Sharkman Auto disabled")
     end
 end
 
@@ -437,24 +402,47 @@ local SharkmanTab = CreateTab("Sharkman")
 local MiscTab = CreateTab("Misc")
 
 -- Combat Tab
-CreateToggle("AimBot", CombatTab, function(State) end)
-CreateToggle("AutoClick", CombatTab, function(State) end)
+CreateToggle("AimBot", CombatTab, function(State) 
+    Enabled.AimBot = State
+    print("AimBot: " .. tostring(State))
+end)
+
+CreateToggle("AutoClick", CombatTab, function(State) 
+    Enabled.AutoClick = State
+    print("AutoClick: " .. tostring(State))
+end)
 
 -- Movement Tab
 CreateToggle("SpeedHack", MovementTab, function(State)
+    Enabled.SpeedHack = State
     if State then
         Humanoid.WalkSpeed = 50
     else
         Humanoid.WalkSpeed = 16
     end
+    print("SpeedHack: " .. tostring(State))
 end)
 
-CreateToggle("Fly", MovementTab, function(State) end)
-CreateToggle("Noclip", MovementTab, function(State) end)
+CreateToggle("Fly", MovementTab, function(State) 
+    Enabled.Fly = State
+    print("Fly: " .. tostring(State))
+end)
+
+CreateToggle("Noclip", MovementTab, function(State) 
+    Enabled.Noclip = State
+    print("NoClip: " .. tostring(State))
+end)
 
 -- Visuals Tab
-CreateToggle("ESP", VisualsTab, function(State) end)
-CreateToggle("WallHack", VisualsTab, function(State) end)
+CreateToggle("ESP", VisualsTab, function(State) 
+    Enabled.ESP = State
+    print("ESP: " .. tostring(State))
+end)
+
+CreateToggle("WallHack", VisualsTab, function(State) 
+    Enabled.WallHack = State
+    print("WallHack: " .. tostring(State))
+end)
 
 -- Sharkman Tab
 CreateToggle("Sharkman Auto", SharkmanTab, SharkmanAutoFunction)
@@ -466,11 +454,11 @@ end
 -- Status label for Sharkman progress
 local StatusLabel = CreateLabel("Status: Ready", SharkmanTab)
 StatusLabel.Name = "StatusLabel"
-StatusLabel.Size = UDim2.new(1, 0, 0, 40)
+StatusLabel.Size = UDim2.new(1, 0, 0, 30)
 
-local BattleStatusLabel = CreateLabel("Battle: Idle", SharkmanTab)
+local BattleStatusLabel = CreateLabel("State: Idle", SharkmanTab)
 BattleStatusLabel.Name = "BattleStatusLabel"
-BattleStatusLabel.Size = UDim2.new(1, 0, 0, 40)
+BattleStatusLabel.Size = UDim2.new(1, 0, 0, 30)
 
 -- Misc Tab
 local UnloadButton = Instance.new("TextButton")
@@ -491,9 +479,7 @@ UnloadButton.MouseButton1Click:Connect(function()
     if SharkmanConnection then
         SharkmanConnection:Disconnect()
     end
-    if FishBattleConnection then
-        FishBattleConnection:Disconnect()
-    end
+    print("Script unloaded")
 end)
 
 -- UI Controls
@@ -528,7 +514,7 @@ spawn(function()
                 SharkmanTab.StatusLabel.Text = "Status: Current: " .. (CurrentHeadband or "None") .. " | Next: " .. NextHeadband
             end
             
-            SharkmanTab.BattleStatusLabel.Text = "Battle: " .. CurrentBattleState
+            SharkmanTab.BattleStatusLabel.Text = "State: " .. CurrentBattleState
         end
     end
 end)
@@ -538,9 +524,14 @@ LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
     Character = NewCharacter
     Humanoid = NewCharacter:WaitForChild("Humanoid")
     HumanoidRootPart = NewCharacter:WaitForChild("HumanoidRootPart")
+    print("Character reconnected")
 end)
 
 print("Deep Hub Sharkman Auto loaded!")
 print("Press R to open menu")
-print("Sharkman Auto will automatically complete Fish Battles")
-print("Headbands progression: White → Yellow → Orange → Green → Blue → Purple → Red → Black")
+print("Sharkman Auto Features:")
+print("- Auto find Sharkman Master")
+print("- Auto interact with NPC")
+print("- Auto click dialog options")
+print("- Auto perform battle actions")
+print("- Headband progression tracking")
