@@ -14,8 +14,8 @@ ScreenGui.Parent = game.CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 550, 0, 550)
-MainFrame.Position = UDim2.new(0.5, -275, 0.5, -275)
+MainFrame.Size = UDim2.new(0, 600, 0, 550)
+MainFrame.Position = UDim2.new(0.5, -300, 0.5, -275)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -30,7 +30,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Title.Text = "Deep Hub v4.0 - AI Sharkman System"
+Title.Text = "Deep Hub v4.1 - AI Sharkman System"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
@@ -64,7 +64,7 @@ TabButtonsFrame.BackgroundTransparency = 1
 TabButtonsFrame.Parent = MainFrame
 
 local TabsFrame = Instance.new("Frame")
-TabsFrame.Size = UDim2.new(0, 380, 0, 460)
+TabsFrame.Size = UDim2.new(0, 430, 0, 460)
 TabsFrame.Position = UDim2.new(0, 150, 0, 50)
 TabsFrame.BackgroundTransparency = 1
 TabsFrame.ClipsDescendants = true
@@ -75,6 +75,7 @@ local Tabs = {
     Combat = {Name = "Combat", Color = Color3.fromRGB(220, 80, 80)},
     Movement = {Name = "Movement", Color = Color3.fromRGB(80, 180, 80)},
     Visuals = {Name = "Visuals", Color = Color3.fromRGB(80, 120, 220)},
+    Farming = {Name = "Farming", Color = Color3.fromRGB(220, 180, 60)},
     Sharkman = {Name = "Sharkman AI", Color = Color3.fromRGB(0, 150, 200)},
     Misc = {Name = "Misc", Color = Color3.fromRGB(180, 100, 220)}
 }
@@ -83,9 +84,44 @@ local Tabs = {
 local CurrentTab = "Sharkman"
 local Connections = {}
 local Enabled = {
-    SharkmanAI = false,
+    -- Combat
     AimBot = false,
-    SpeedHack = false
+    AutoClick = false,
+    KillAura = false,
+    
+    -- Movement
+    SpeedHack = false,
+    Fly = false,
+    Noclip = false,
+    WaterWalk = false,
+    
+    -- Visuals
+    ESP = false,
+    WallHack = false,
+    
+    -- Farming
+    AutoFarm = false,
+    
+    -- Sharkman AI
+    SharkmanAI = false
+}
+
+-- Real Blox Fruits materials
+local FarmMaterials = {
+    "Magma Ore",
+    "Fish Tail",
+    "Scrap Metal",
+    "Dragon Scale",
+    "Leviathan Scale",
+    "Radioactive Material",
+    "Ectoplasm",
+    "Bones",
+    "Dark Fragment",
+    "Angel Wings",
+    "Demonic Wings",
+    "Mini Tusk",
+    "Conjured Cocoa",
+    "Gunpowder"
 }
 
 -- Sharkman Headbands progression
@@ -108,6 +144,7 @@ local ActionCooldown = 1.5
 local BattleRound = 0
 local TotalBattles = 0
 local SuccessRate = 0
+local SelectedMaterial = "Magma Ore"
 
 -- Character initialization
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -209,6 +246,44 @@ local function CreateLabel(Text, Parent)
     return Label
 end
 
+local function CreateDropdown(Name, Parent, Options, Callback)
+    local DropdownFrame = Instance.new("Frame")
+    DropdownFrame.Size = UDim2.new(1, 0, 0, 40)
+    DropdownFrame.BackgroundTransparency = 1
+    DropdownFrame.Parent = Parent
+    
+    local Title = CreateLabel(Name, DropdownFrame)
+    
+    local DropdownButton = Instance.new("TextButton")
+    DropdownButton.Size = UDim2.new(1, 0, 0, 25)
+    DropdownButton.Position = UDim2.new(0, 0, 0, 20)
+    DropdownButton.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    DropdownButton.Text = Options[1]
+    DropdownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    DropdownButton.Font = Enum.Font.Gotham
+    DropdownButton.TextSize = 12
+    DropdownButton.Parent = DropdownFrame
+    
+    local Corner = Instance.new("UICorner")
+    Corner.CornerRadius = UDim.new(0, 4)
+    Corner.Parent = DropdownButton
+    
+    DropdownButton.MouseButton1Click:Connect(function()
+        for i, Option in ipairs(Options) do
+            if DropdownButton.Text == Option then
+                local NextOption = Options[(i % #Options) + 1]
+                DropdownButton.Text = NextOption
+                if Callback then
+                    Callback(NextOption)
+                end
+                break
+            end
+        end
+    end)
+    
+    return DropdownFrame
+end
+
 -- AI Vision System
 local function AIVisualScan()
     local results = {
@@ -285,8 +360,6 @@ local function AIExecuteAction(action, scanResults)
     
     if action == "SEARCH_NPC" then
         print("AI: Searching for Sharkman Master...")
-        -- Move to common Sharkman locations
-        HumanoidRootPart.CFrame = CFrame.new(0, 0, 0)
         return true
     end
     
@@ -441,6 +514,233 @@ local function GetNextHeadband()
     return HeadbandsRequired[1]
 end
 
+-- Functional Functions from v3.1
+local function AimBotFunction(State)
+    if State then
+        Connections.AimBot = RunService.RenderStepped:Connect(function()
+            local ClosestPlayer = nil
+            local ClosestDistance = math.huge
+            
+            for _, Player in pairs(Players:GetPlayers()) do
+                if Player ~= LocalPlayer and Player.Character and Player.Character:FindFirstChild("Humanoid") and Player.Character.Humanoid.Health > 0 then
+                    local Distance = (Player.Character.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+                    if Distance < ClosestDistance then
+                        ClosestDistance = Distance
+                        ClosestPlayer = Player
+                    end
+                end
+            end
+            
+            if ClosestPlayer and ClosestPlayer.Character and ClosestPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local Camera = Workspace.CurrentCamera
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, ClosestPlayer.Character.HumanoidRootPart.Position)
+            end
+        end)
+    else
+        if Connections.AimBot then
+            Connections.AimBot:Disconnect()
+        end
+    end
+end
+
+local function ESPFunction(State)
+    if State then
+        local function CreateESP(Character)
+            if Character ~= LocalPlayer.Character then
+                local Highlight = Instance.new("Highlight")
+                Highlight.Name = "DeepHubESP"
+                Highlight.Adornee = Character
+                Highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                Highlight.FillTransparency = 0.5
+                Highlight.Parent = Character
+            end
+        end
+        
+        for _, Player in pairs(Players:GetPlayers()) do
+            if Player.Character then
+                CreateESP(Player.Character)
+            end
+        end
+    else
+        for _, Character in pairs(Workspace:GetChildren()) do
+            if Character:FindFirstChild("DeepHubESP") then
+                Character.DeepHubESP:Destroy()
+            end
+        end
+    end
+end
+
+local function FlyFunction(State)
+    if State then
+        Connections.Fly = RunService.Heartbeat:Connect(function()
+            local Camera = Workspace.CurrentCamera
+            local FlySpeed = 50
+            local Velocity = Vector3.new(0, 0, 0)
+            
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                Velocity = Velocity + Camera.CFrame.LookVector * FlySpeed
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                Velocity = Velocity - Camera.CFrame.LookVector * FlySpeed
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                Velocity = Velocity - Camera.CFrame.RightVector * FlySpeed
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                Velocity = Velocity + Camera.CFrame.RightVector * FlySpeed
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                Velocity = Velocity + Vector3.new(0, FlySpeed, 0)
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+                Velocity = Velocity - Vector3.new(0, FlySpeed, 0)
+            end
+            
+            HumanoidRootPart.Velocity = Velocity
+        end)
+    else
+        if Connections.Fly then
+            Connections.Fly:Disconnect()
+        end
+        HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+    end
+end
+
+local function NoclipFunction(State)
+    if State then
+        Connections.Noclip = RunService.Stepped:Connect(function()
+            for _, Part in pairs(Character:GetDescendants()) do
+                if Part:IsA("BasePart") then
+                    Part.CanCollide = false
+                end
+            end
+        end)
+    else
+        if Connections.Noclip then
+            Connections.Noclip:Disconnect()
+        end
+    end
+end
+
+local function SpeedHackFunction(State)
+    if State then
+        Humanoid.WalkSpeed = 50
+    else
+        Humanoid.WalkSpeed = 16
+    end
+end
+
+local function AutoClickFunction(State)
+    if State then
+        Connections.AutoClick = RunService.Heartbeat:Connect(function()
+            mouse1press()
+            wait(0.1)
+            mouse1release()
+        end)
+    else
+        if Connections.AutoClick then
+            Connections.AutoClick:Disconnect()
+        end
+    end
+end
+
+local function KillAuraFunction(State)
+    if State then
+        Connections.KillAura = RunService.Heartbeat:Connect(function()
+            for _, NPC in pairs(Workspace:GetChildren()) do
+                if NPC:FindFirstChild("Humanoid") and NPC:FindFirstChild("HumanoidRootPart") and NPC.Humanoid.Health > 0 then
+                    local Distance = (NPC.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+                    if Distance < 20 then
+                        HumanoidRootPart.CFrame = NPC.HumanoidRootPart.CFrame * CFrame.new(0, 0, -5)
+                        if Enabled.AutoClick then
+                            mouse1press()
+                            wait(0.1)
+                            mouse1release()
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        if Connections.KillAura then
+            Connections.KillAura:Disconnect()
+        end
+    end
+end
+
+local function WaterWalkFunction(State)
+    if State then
+        Connections.WaterWalk = RunService.Heartbeat:Connect(function()
+            local Ray = Ray.new(HumanoidRootPart.Position, Vector3.new(0, -10, 0))
+            local Hit, Position = Workspace:FindPartOnRay(Ray, Character)
+            
+            if Hit and (Hit.Name:find("Water") or Hit.Name:find("Ocean")) then
+                HumanoidRootPart.CFrame = CFrame.new(HumanoidRootPart.Position.X, Position.Y + 3, HumanoidRootPart.Position.Z)
+            end
+        end)
+    else
+        if Connections.WaterWalk then
+            Connections.WaterWalk:Disconnect()
+        end
+    end
+end
+
+local function MaterialFarmFunction(State)
+    if State then
+        Connections.AutoFarm = RunService.Heartbeat:Connect(function()
+            -- Farm NPCs
+            for _, NPC in pairs(Workspace:GetChildren()) do
+                if NPC:FindFirstChild("Humanoid") and NPC:FindFirstChild("HumanoidRootPart") and NPC.Humanoid.Health > 0 then
+                    local Distance = (NPC.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+                    if Distance < 100 then
+                        HumanoidRootPart.CFrame = NPC.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
+                        if Enabled.AutoClick then
+                            mouse1press()
+                            wait(0.1)
+                            mouse1release()
+                        end
+                        break
+                    end
+                end
+            end
+            
+            -- Farm materials
+            for _, Item in pairs(Workspace:GetChildren()) do
+                if table.find(FarmMaterials, Item.Name) and Item:IsA("Part") then
+                    local Distance = (Item.Position - HumanoidRootPart.Position).Magnitude
+                    if Distance < 50 then
+                        HumanoidRootPart.CFrame = Item.CFrame
+                        break
+                    end
+                end
+            end
+        end)
+    else
+        if Connections.AutoFarm then
+            Connections.AutoFarm:Disconnect()
+        end
+    end
+end
+
+local function WallHackFunction(State)
+    if State then
+        Lighting.GlobalShadows = false
+        for _, Part in pairs(Workspace:GetDescendants()) do
+            if Part:IsA("Part") or Part:IsA("MeshPart") then
+                Part.Transparency = 0.5
+            end
+        end
+    else
+        Lighting.GlobalShadows = true
+        for _, Part in pairs(Workspace:GetDescendants()) do
+            if Part:IsA("Part") or Part:IsA("MeshPart") then
+                Part.Transparency = 0
+            end
+        end
+    end
+end
+
 -- Create Tabs and UI
 local YPosition = 0
 for TabName, _ in pairs(Tabs) do
@@ -449,10 +749,32 @@ for TabName, _ in pairs(Tabs) do
 end
 
 local CombatTab = CreateTab("Combat")
-local MovementTab = CreateTab("Movement") 
+local MovementTab = CreateTab("Movement")
 local VisualsTab = CreateTab("Visuals")
+local FarmingTab = CreateTab("Farming")
 local SharkmanTab = CreateTab("Sharkman AI")
 local MiscTab = CreateTab("Misc")
+
+-- Combat Tab
+CreateToggle("AimBot", CombatTab, AimBotFunction)
+CreateToggle("AutoClick", CombatTab, AutoClickFunction)
+CreateToggle("KillAura", CombatTab, KillAuraFunction)
+
+-- Movement Tab
+CreateToggle("SpeedHack", MovementTab, SpeedHackFunction)
+CreateToggle("Fly", MovementTab, FlyFunction)
+CreateToggle("Noclip", MovementTab, NoclipFunction)
+CreateToggle("WaterWalk", MovementTab, WaterWalkFunction)
+
+-- Visuals Tab
+CreateToggle("ESP", VisualsTab, ESPFunction)
+CreateToggle("WallHack", VisualsTab, WallHackFunction)
+
+-- Farming Tab
+CreateToggle("Auto Farm", FarmingTab, MaterialFarmFunction)
+CreateDropdown("Select Material", FarmingTab, FarmMaterials, function(Material)
+    SelectedMaterial = Material
+end)
 
 -- Sharkman AI Tab
 CreateToggle("AI Sharkman System", SharkmanTab, SharkmanAISystem)
@@ -480,13 +802,6 @@ for i, headband in ipairs(HeadbandsRequired) do
     CreateLabel(i .. ". " .. headband, SharkmanTab)
 end
 
--- Other tabs (simplified)
-CreateToggle("AimBot", CombatTab, function(s) Enabled.AimBot = s end)
-CreateToggle("Speed Hack", MovementTab, function(s) 
-    Enabled.SpeedHack = s
-    Humanoid.WalkSpeed = s and 50 or 16
-end)
-
 -- Misc Tab
 local UnloadButton = Instance.new("TextButton")
 UnloadButton.Size = UDim2.new(1, -20, 0, 30)
@@ -500,10 +815,13 @@ UnloadButton.Parent = MiscTab
 
 UnloadButton.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
+    for _, Connection in pairs(Connections) do
+        Connection:Disconnect()
+    end
     if SharkmanAIConnection then
         SharkmanAIConnection:Disconnect()
     end
-    print("AI System shutdown complete")
+    print("Script unloaded")
 end)
 
 -- UI Controls
@@ -537,8 +855,20 @@ spawn(function()
     end
 end)
 
-print("🤖 Deep Hub AI Sharkman System Loaded!")
-print("🔧 Features: Neural Network + Computer Vision")
-print("🎯 Capabilities: Full Sharkman Karate Automation")
-print("📊 AI will handle everything from finding NPC to perfect battles")
-print("🚀 Press R to open AI Control Panel")
+-- Character reconnection
+LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
+    Character = NewCharacter
+    Humanoid = NewCharacter:WaitForChild("Humanoid")
+    HumanoidRootPart = NewCharacter:WaitForChild("HumanoidRootPart")
+    
+    -- Re-enable features
+    if Enabled.SpeedHack then
+        Humanoid.WalkSpeed = 50
+    end
+end)
+
+print("🤖 Deep Hub AI System Loaded!")
+print("🎯 All functions from v3.1 restored + AI Sharkman")
+print("🚀 Features: AimBot, ESP, Fly, NoClip, AutoFarm, KillAura, WaterWalk")
+print("🧠 AI Sharkman: Full automation to Headband (Black)")
+print("📊 Press R to open control panel")
