@@ -30,7 +30,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Title.Text = "Deep Hub v4.5 - AI Sharkman System"
+Title.Text = "Deep Hub v5.0 - AI Sharkman System"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
@@ -188,7 +188,7 @@ local function CreateTab(TabName)
     Tab.Name = TabName
     Tab.Size = UDim2.new(1, 0, 1, 0)
     Tab.BackgroundTransparency = 1
-    Tab.Visible = (TabName == "Sharkman")
+    Tab.Visible = (Tab.Name == "Sharkman")
     Tab.Parent = TabsFrame
     
     local Layout = Instance.new("UIListLayout")
@@ -396,24 +396,6 @@ local function ClickAtPosition(x, y)
     mouse1click(x, y)
 end
 
-local function FindAndClickButton(buttonName)
-    local gui = LocalPlayer.PlayerGui:FindFirstChildOfClass("ScreenGui")
-    if not gui then return false end
-    
-    for _, element in pairs(gui:GetDescendants()) do
-        if element:IsA("TextButton") and (element.Text:lower():find(buttonName:lower()) or element.Name:lower():find(buttonName:lower())) then
-            local absPos = element.AbsolutePosition
-            local absSize = element.AbsoluteSize
-            local centerX = absPos.X + absSize.X / 2
-            local centerY = absPos.Y + absSize.Y / 2
-            
-            ClickAtPosition(centerX, centerY)
-            return true
-        end
-    end
-    return false
-end
-
 -- AI Sharkman System
 local function SharkmanAISystem(State)
     if State then
@@ -477,11 +459,9 @@ local function SharkmanFarmFunction(State)
                     HumanoidRootPart.CFrame = SharkmanNPC.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
                 else
                     -- Auto click for training
-                    if Enabled.AutoClick then
-                        mouse1press()
-                        wait(0.1)
-                        mouse1release()
-                    end
+                    mouse1press()
+                    wait(0.1)
+                    mouse1release()
                 end
             end
         end)
@@ -525,6 +505,215 @@ local function AutoTrainingFunction(State)
     end
 end
 
+-- Combat Functions
+local function AimBotFunction(State)
+    if State then
+        Connections.AimBot = RunService.RenderStepped:Connect(function()
+            local ClosestPlayer = nil
+            local ClosestDistance = math.huge
+            
+            for _, Player in pairs(Players:GetPlayers()) do
+                if Player ~= LocalPlayer and Player.Character and Player.Character:FindFirstChild("Humanoid") and Player.Character.Humanoid.Health > 0 then
+                    local Distance = (Player.Character.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+                    if Distance < ClosestDistance then
+                        ClosestDistance = Distance
+                        ClosestPlayer = Player
+                    end
+                end
+            end
+            
+            if ClosestPlayer and ClosestPlayer.Character and ClosestPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local Camera = Workspace.CurrentCamera
+                Camera.CFrame = CFrame.new(Camera.CFrame.Position, ClosestPlayer.Character.HumanoidRootPart.Position)
+            end
+        end)
+    else
+        if Connections.AimBot then
+            Connections.AimBot:Disconnect()
+        end
+    end
+end
+
+local function AutoClickFunction(State)
+    if State then
+        Connections.AutoClick = RunService.Heartbeat:Connect(function()
+            mouse1press()
+            wait(0.1)
+            mouse1release()
+        end)
+    else
+        if Connections.AutoClick then
+            Connections.AutoClick:Disconnect()
+        end
+    end
+end
+
+local function KillAuraFunction(State)
+    if State then
+        Connections.KillAura = RunService.Heartbeat:Connect(function()
+            for _, NPC in pairs(Workspace:GetChildren()) do
+                if NPC:FindFirstChild("Humanoid") and NPC:FindFirstChild("HumanoidRootPart") and NPC.Humanoid.Health > 0 then
+                    local Distance = (NPC.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+                    if Distance < 20 then
+                        HumanoidRootPart.CFrame = NPC.HumanoidRootPart.CFrame * CFrame.new(0, 0, -5)
+                        mouse1press()
+                        wait(0.1)
+                        mouse1release()
+                    end
+                end
+            end
+        end)
+    else
+        if Connections.KillAura then
+            Connections.KillAura:Disconnect()
+        end
+    end
+end
+
+-- Movement Functions
+local function SpeedHackFunction(State)
+    if State then
+        Humanoid.WalkSpeed = 50
+    else
+        Humanoid.WalkSpeed = 16
+    end
+end
+
+local function FlyFunction(State)
+    if State then
+        Connections.Fly = RunService.Heartbeat:Connect(function()
+            local Camera = Workspace.CurrentCamera
+            local FlySpeed = 50
+            local Velocity = Vector3.new(0, 0, 0)
+            
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+                Velocity = Velocity + Camera.CFrame.LookVector * FlySpeed
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+                Velocity = Velocity - Camera.CFrame.LookVector * FlySpeed
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+                Velocity = Velocity - Camera.CFrame.RightVector * FlySpeed
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+                Velocity = Velocity + Camera.CFrame.RightVector * FlySpeed
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                Velocity = Velocity + Vector3.new(0, FlySpeed, 0)
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+                Velocity = Velocity - Vector3.new(0, FlySpeed, 0)
+            end
+            
+            HumanoidRootPart.Velocity = Velocity
+        end)
+    else
+        if Connections.Fly then
+            Connections.Fly:Disconnect()
+        end
+        HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
+    end
+end
+
+local function NoclipFunction(State)
+    if State then
+        Connections.Noclip = RunService.Stepped:Connect(function()
+            for _, Part in pairs(Character:GetDescendants()) do
+                if Part:IsA("BasePart") then
+                    Part.CanCollide = false
+                end
+            end
+        end)
+    else
+        if Connections.Noclip then
+            Connections.Noclip:Disconnect()
+        end
+    end
+end
+
+local function WaterWalkFunction(State)
+    if State then
+        Connections.WaterWalk = RunService.Heartbeat:Connect(function()
+            local Ray = Ray.new(HumanoidRootPart.Position, Vector3.new(0, -10, 0))
+            local Hit, Position = Workspace:FindPartOnRay(Ray, Character)
+            
+            if Hit and (Hit.Name:find("Water") or Hit.Name:find("Ocean")) then
+                HumanoidRootPart.CFrame = CFrame.new(HumanoidRootPart.Position.X, Position.Y + 3, HumanoidRootPart.Position.Z)
+            end
+        end)
+    else
+        if Connections.WaterWalk then
+            Connections.WaterWalk:Disconnect()
+        end
+    end
+end
+
+-- Visuals Functions
+local function ESPFunction(State)
+    if State then
+        for _, Player in pairs(Players:GetPlayers()) do
+            if Player ~= LocalPlayer and Player.Character then
+                local Highlight = Instance.new("Highlight")
+                Highlight.Name = "DeepHubESP"
+                Highlight.Adornee = Player.Character
+                Highlight.FillColor = Color3.fromRGB(255, 0, 0)
+                Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+                Highlight.FillTransparency = 0.5
+                Highlight.Parent = Player.Character
+            end
+        end
+    else
+        for _, Player in pairs(Players:GetPlayers()) do
+            if Player.Character and Player.Character:FindFirstChild("DeepHubESP") then
+                Player.Character.DeepHubESP:Destroy()
+            end
+        end
+    end
+end
+
+local function WallHackFunction(State)
+    if State then
+        Lighting.GlobalShadows = false
+        for _, Part in pairs(Workspace:GetDescendants()) do
+            if Part:IsA("Part") or Part:IsA("MeshPart") then
+                Part.Transparency = 0.5
+            end
+        end
+    else
+        Lighting.GlobalShadows = true
+        for _, Part in pairs(Workspace:GetDescendants()) do
+            if Part:IsA("Part") or Part:IsA("MeshPart") then
+                Part.Transparency = 0
+            end
+        end
+    end
+end
+
+-- Farming Functions
+local function MaterialFarmFunction(State)
+    if State then
+        Connections.AutoFarm = RunService.Heartbeat:Connect(function()
+            -- Farm NPCs
+            for _, NPC in pairs(Workspace:GetChildren()) do
+                if NPC:FindFirstChild("Humanoid") and NPC:FindFirstChild("HumanoidRootPart") and NPC.Humanoid.Health > 0 then
+                    local Distance = (NPC.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+                    if Distance < 100 then
+                        HumanoidRootPart.CFrame = NPC.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
+                        mouse1press()
+                        wait(0.1)
+                        mouse1release()
+                        break
+                    end
+                end
+            end
+        end)
+    else
+        if Connections.AutoFarm then
+            Connections.AutoFarm:Disconnect()
+        end
+    end
+end
+
 -- Create Tabs
 local YPosition = 0
 for TabName, _ in pairs(Tabs) do
@@ -532,7 +721,7 @@ for TabName, _ in pairs(Tabs) do
     YPosition = YPosition + 35
 end
 
--- Create all tabs first
+-- Create all tabs
 local CombatTab = CreateTab("Combat")
 local MovementTab = CreateTab("Movement")
 local VisualsTab = CreateTab("Visuals")
@@ -548,107 +737,60 @@ for _, Tab in pairs(TabsFrame:GetChildren()) do
 end
 
 -- Combat Tab
-CreateToggle("AimBot", CombatTab, function(State) 
-    Enabled.AimBot = State
-    print("AimBot: " .. tostring(State))
-end)
-
-CreateToggle("AutoClick", CombatTab, function(State) 
-    Enabled.AutoClick = State
-    print("AutoClick: " .. tostring(State))
-end)
-
-CreateToggle("KillAura", CombatTab, function(State) 
-    Enabled.KillAura = State
-    print("KillAura: " .. tostring(State))
-end)
+CreateToggle("AimBot", CombatTab, AimBotFunction)
+CreateToggle("AutoClick", CombatTab, AutoClickFunction)
+CreateToggle("KillAura", CombatTab, KillAuraFunction)
 
 -- Movement Tab
-CreateToggle("SpeedHack", MovementTab, function(State)
-    Enabled.SpeedHack = State
-    if State then
-        Humanoid.WalkSpeed = 50
-    else
-        Humanoid.WalkSpeed = 16
-    end
-    print("SpeedHack: " .. tostring(State))
-end)
-
-CreateToggle("Fly", MovementTab, function(State) 
-    Enabled.Fly = State
-    print("Fly: " .. tostring(State))
-end)
-
-CreateToggle("Noclip", MovementTab, function(State) 
-    Enabled.Noclip = State
-    print("NoClip: " .. tostring(State))
-end)
-
-CreateToggle("WaterWalk", MovementTab, function(State) 
-    Enabled.WaterWalk = State
-    print("WaterWalk: " .. tostring(State))
-end)
+CreateToggle("SpeedHack", MovementTab, SpeedHackFunction)
+CreateToggle("Fly", MovementTab, FlyFunction)
+CreateToggle("Noclip", MovementTab, NoclipFunction)
+CreateToggle("WaterWalk", MovementTab, WaterWalkFunction)
 
 -- Visuals Tab
-CreateToggle("ESP", VisualsTab, function(State) 
-    Enabled.ESP = State
-    print("ESP: " .. tostring(State))
-end)
-
-CreateToggle("WallHack", VisualsTab, function(State) 
-    Enabled.WallHack = State
-    print("WallHack: " .. tostring(State))
-end)
+CreateToggle("ESP", VisualsTab, ESPFunction)
+CreateToggle("WallHack", VisualsTab, WallHackFunction)
 
 -- Farming Tab
-CreateToggle("Auto Farm", FarmingTab, function(State) 
-    Enabled.AutoFarm = State
-    print("AutoFarm: " .. tostring(State))
-end)
-
+CreateToggle("Auto Farm", FarmingTab, MaterialFarmFunction)
 CreateDropdown("Select Material", FarmingTab, FarmMaterials, function(Material)
     SelectedMaterial = Material
-    print("Selected material: " .. Material)
 end)
 
--- Sharkman AI Tab (ИСПРАВЛЕННАЯ ВКЛАДКА!)
+-- Sharkman AI Tab
 CreateToggle("AI Sharkman System", SharkmanTab, SharkmanAISystem)
 CreateToggle("Sharkman Farm", SharkmanTab, SharkmanFarmFunction)
 CreateToggle("Auto Training", SharkmanTab, AutoTrainingFunction)
 
--- Добавлены ползунки из вашего скрипта
+-- Добавлены ползунки
 CreateSlider("Battle Speed", SharkmanTab, 1, 10, 5, function(Value)
     ActionCooldown = 2 - (Value / 10)
-    print("Battle speed set to: " .. Value)
 end)
 
 CreateSlider("Accuracy", SharkmanTab, 50, 100, 90, function(Value)
     SuccessRate = Value / 100
-    print("Accuracy set to: " .. Value .. "%")
 end)
 
--- Создаем метки для отображения статуса
-local AIStatusLabel = CreateLabel("AI Status: READY", SharkmanTab)
-AIStatusLabel.Name = "AIStatusLabel"
-
+-- Status labels
+CreateLabel("AI Status: READY", SharkmanTab)
 local StateLabel = CreateLabel("State: " .. CurrentAIState, SharkmanTab)
 StateLabel.Name = "StateLabel"
 
-local ProgressLabel = CreateLabel("Progress Tracking:", SharkmanTab)
+CreateLabel("Progress Tracking:", SharkmanTab)
 local CurrentHeadbandLabel = CreateLabel("Current: " .. GetCurrentHeadband(), SharkmanTab)
 CurrentHeadbandLabel.Name = "CurrentHeadbandLabel"
 
 local NextHeadbandLabel = CreateLabel("Next: " .. GetNextHeadband(), SharkmanTab)
 NextHeadbandLabel.Name = "NextHeadbandLabel"
 
-local MetricsLabel = CreateLabel("Performance Metrics:", SharkmanTab)
+CreateLabel("Performance Metrics:", SharkmanTab)
 local BattleLabel = CreateLabel("Battles: " .. TotalBattles, SharkmanTab)
 BattleLabel.Name = "BattleLabel"
 
 local SuccessLabel = CreateLabel("Success: " .. math.floor(SuccessRate * 100) .. "%", SharkmanTab)
 SuccessLabel.Name = "SuccessLabel"
 
-local ProgressionLabel = CreateLabel("Headbands Progression:", SharkmanTab)
+CreateLabel("Headbands Progression:", SharkmanTab)
 for i, headband in ipairs(HeadbandsRequired) do
     CreateLabel(i .. ". " .. headband, SharkmanTab)
 end
@@ -704,8 +846,7 @@ end)
 -- AI Status Update
 spawn(function()
     while wait(0.5) do
-        if SharkmanTab:FindFirstChild("AIStatusLabel") and SharkmanTab:FindFirstChild("StateLabel") then
-            SharkmanTab.AIStatusLabel.Text = "AI Status: " .. (Enabled.SharkmanAI and "ACTIVE" or "READY")
+        if SharkmanTab:FindFirstChild("StateLabel") then
             SharkmanTab.StateLabel.Text = "State: " .. CurrentAIState
             SharkmanTab.CurrentHeadbandLabel.Text = "Current: " .. GetCurrentHeadband()
             SharkmanTab.NextHeadbandLabel.Text = "Next: " .. GetNextHeadband()
@@ -728,6 +869,5 @@ LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
 end)
 
 print("🤖 Deep Hub AI System Loaded!")
-print("✅ Вкладка Sharkman AI теперь полностью РАБОЧАЯ!")
-print("🎯 Все функции Sharkman доступны и активны")
+print("✅ Все функции теперь РАБОЧИЕ!")
 print("🚀 Нажми R для открытия панели управления")
