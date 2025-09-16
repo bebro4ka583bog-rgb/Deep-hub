@@ -84,10 +84,33 @@ local Tabs = {
 local CurrentTab = "Sharkman"
 local Connections = {}
 local Enabled = {
-    -- Combat
     AimBot = false,
+    WallHack = false,
+    SpeedHack = false,
+    Noclip = false,
+    Fly = false,
+    ESP = false,
     AutoClick = false,
-    KillAura = false,
+    SharkmanAuto = false
+}
+
+-- Sharkman Headbands progression
+local HeadbandsRequired = {
+    "Headband (White)",
+    "Headband (Yellow)", 
+    "Headband (Orange)",
+    "Headband (Green)",
+    "Headband (Blue)",
+    "Headband (Purple)",
+    "Headband (Red)",
+    "Headband (Black)"
+}
+
+local SharkmanConnection = nil
+local FishBattleConnection = nil
+local CurrentBattleState = "Idle"
+local LastActionTime = 0
+local ActionCooldown = 2
     
     -- Movement
     SpeedHack = false,
