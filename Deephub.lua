@@ -1,4 +1,4 @@
--- Deep Hub Script for Blox Fruits with Sharkman Farmer
+-- Deep Hub Script for Blox Fruits
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -14,8 +14,8 @@ ScreenGui.Parent = game.CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 450, 0, 400)
-MainFrame.Position = UDim2.new(0.5, -225, 0.5, -200)
+MainFrame.Size = UDim2.new(0, 450, 0, 450)
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -225)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -30,7 +30,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Title.Text = "Deep Hub v2.0 - Sharkman Farmer"
+Title.Text = "Deep Hub v2.5"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
@@ -58,13 +58,13 @@ ToggleButton.Visible = false
 ToggleButton.Parent = ScreenGui
 
 local TabButtonsFrame = Instance.new("Frame")
-TabButtonsFrame.Size = UDim2.new(0, 120, 0, 310)
+TabButtonsFrame.Size = UDim2.new(0, 120, 0, 360)
 TabButtonsFrame.Position = UDim2.new(0, 10, 0, 50)
 TabButtonsFrame.BackgroundTransparency = 1
 TabButtonsFrame.Parent = MainFrame
 
 local TabsFrame = Instance.new("Frame")
-TabsFrame.Size = UDim2.new(0, 300, 0, 310)
+TabsFrame.Size = UDim2.new(0, 300, 0, 360)
 TabsFrame.Position = UDim2.new(0, 130, 0, 50)
 TabsFrame.BackgroundTransparency = 1
 TabsFrame.ClipsDescendants = true
@@ -76,7 +76,7 @@ local Tabs = {
     Movement = {Name = "Movement", Color = Color3.fromRGB(80, 180, 80)},
     Visuals = {Name = "Visuals", Color = Color3.fromRGB(80, 120, 220)},
     Farming = {Name = "Farming", Color = Color3.fromRGB(220, 180, 60)},
-    Sharkman = {Name = "Sharkman", Color = Color3.fromRGB(0, 150, 200)}, -- New tab
+    Sharkman = {Name = "Sharkman", Color = Color3.fromRGB(0, 150, 200)},
     Misc = {Name = "Misc", Color = Color3.fromRGB(180, 100, 220)}
 }
 
@@ -92,7 +92,7 @@ local Enabled = {
     ESP = false,
     AutoFarm = false,
     AutoClick = false,
-    SharkmanFarm = false  -- New variable
+    SharkmanFarm = false
 }
 
 -- Real Blox Fruits materials
@@ -113,11 +113,17 @@ local FarmMaterials = {
     "Gunpowder"
 }
 
--- Sharkman Farm variables
-local SharkmanWins = 0
-local SharkmanAttempts = 0
-local SharkmanConnection = nil
-local FishBoxPosition = Vector3.new(-1250, 50, 750) -- Adjust based on your server
+-- Sharkman Headbands progression
+local HeadbandsRequired = {
+    "Headband (White)",
+    "Headband (Yellow)", 
+    "Headband (Orange)",
+    "Headband (Green)",
+    "Headband (Blue)",
+    "Headband (Purple)",
+    "Headband (Red)",
+    "Headband (Black)"
+}
 
 local SelectedMaterial = "Magma Ore"
 local AimBotTarget = nil
@@ -126,6 +132,7 @@ local FarmConnection = nil
 local ClickConnection = nil
 local NoclipConnection = nil
 local FlyConnection = nil
+local SharkmanConnection = nil
 
 -- Character initialization
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
@@ -265,82 +272,7 @@ local function CreateDropdown(Name, Parent, Options, Callback)
     return DropdownFrame
 end
 
--- Sharkman Farm Functions
-local function FindSharkmanMaster()
-    for _, npc in ipairs(Workspace.NPCs:GetChildren()) do
-        if npc.Name == "Sharkman Master" and npc:FindFirstChild("Humanoid") then
-            return npc
-        end
-    end
-    return nil
-end
-
-local function TeleportTo(position)
-    pcall(function()
-        if Character and Character:FindFirstChild("HumanoidRootPart") then
-            Character.HumanoidRootPart.CFrame = CFrame.new(position)
-        end
-    end)
-end
-
-local function AttackSharkman(target)
-    if not target or not target:FindFirstChild("Humanoid") then return false end
-    
-    pcall(function()
-        -- Use high damage to kill quickly
-        target.Humanoid:TakeDamage(10000)
-    end)
-    
-    wait(1)
-    return not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0
-end
-
-local function SharkmanFarmFunction(State)
-    if State then
-        SharkmanConnection = RunService.Heartbeat:Connect(function()
-            if not Enabled.SharkmanFarm then return end
-            
-            -- Teleport to Fish Box
-            TeleportTo(FishBoxPosition)
-            wait(2)
-            
-            -- Find Sharkman Master
-            local master = FindSharkmanMaster()
-            
-            if master then
-                -- Attack the master
-                local success = AttackSharkman(master)
-                SharkmanAttempts = SharkmanAttempts + 1
-                
-                if success then
-                    SharkmanWins = SharkmanWins + 1
-                    print("✅ Sharkman Master defeated! Wins: " .. SharkmanWins .. "/8")
-                    
-                    if SharkmanWins >= 8 then
-                        print("🎉 Headband (Black) получен!")
-                        Enabled.SharkmanFarm = false
-                        if SharkmanConnection then
-                            SharkmanConnection:Disconnect()
-                        end
-                    end
-                else
-                    SharkmanWins = 0
-                    print("❌ Поражение! Сброс счетчика побед")
-                end
-            else
-                print("🔍 Sharkman Master не найден, ожидание...")
-            end
-            
-            wait(3) -- Cooldown between attempts
-        end)
-    else
-        if SharkmanConnection then
-            SharkmanConnection:Disconnect()
-        end
-    end
-end
-
--- Functional Functions (existing functions remain the same)
+-- Functional Functions
 local function AimBotFunction(State)
     if State then
         Connections.AimBot = RunService.RenderStepped:Connect(function()
@@ -493,7 +425,7 @@ end
 
 local function MaterialFarmFunction(State)
     if State then
-        MaterialFarmConnection = RunService.Heartbeat:Connect(function()
+        FarmConnection = RunService.Heartbeat:Connect(function()
             if not Enabled.AutoFarm then return end
             
             -- Farm NPCs for materials
@@ -524,8 +456,8 @@ local function MaterialFarmFunction(State)
             end
         end)
     else
-        if MaterialFarmConnection then
-            MaterialFarmConnection:Disconnect()
+        if FarmConnection then
+            FarmConnection:Disconnect()
         end
     end
 end
@@ -552,6 +484,100 @@ local function WallHackFunction(State)
     end
 end
 
+-- Sharkman Functions
+local function GetCurrentHeadband()
+    local Backpack = LocalPlayer:FindFirstChild("Backpack")
+    local Character = LocalPlayer.Character
+    
+    if Backpack then
+        for _, Item in pairs(Backpack:GetChildren()) do
+            if string.find(Item.Name, "Headband") then
+                return Item.Name
+            end
+        end
+    end
+    
+    if Character then
+        for _, Item in pairs(Character:GetChildren()) do
+            if string.find(Item.Name, "Headband") then
+                return Item.Name
+            end
+        end
+    end
+    
+    return nil
+end
+
+local function FindSharkmanMaster()
+    for _, NPC in pairs(Workspace:GetChildren()) do
+        if NPC.Name:find("Sharkman") and NPC:FindFirstChild("Humanoid") then
+            return NPC
+        end
+    end
+    return nil
+end
+
+local function GetNextHeadband()
+    local Current = GetCurrentHeadband() or "None"
+    
+    for i, Headband in ipairs(HeadbandsRequired) do
+        if Current == Headband then
+            if i < #HeadbandsRequired then
+                return HeadbandsRequired[i + 1]
+            else
+                return "COMPLETED"
+            end
+        end
+    end
+    
+    return HeadbandsRequired[1]
+end
+
+local function SharkmanFarmFunction(State)
+    if State then
+        SharkmanConnection = RunService.Heartbeat:Connect(function()
+            if not Enabled.SharkmanFarm then return end
+            
+            local SharkmanNPC = FindSharkmanMaster()
+            
+            if SharkmanNPC and SharkmanNPC:FindFirstChild("HumanoidRootPart") then
+                -- Teleport to Sharkman Master
+                HumanoidRootPart.CFrame = SharkmanNPC.HumanoidRootPart.CFrame * CFrame.new(0, 3, 5)
+                
+                -- Get current progress
+                local CurrentHeadband = GetCurrentHeadband()
+                local NextHeadband = GetNextHeadband()
+                
+                if NextHeadband == "COMPLETED" then
+                    print("Sharkman Karate training completed!")
+                    return
+                end
+                
+                -- Simulate interaction (this would need actual remote events)
+                -- For now, just show status
+                print("Training with Sharkman Master...")
+                print("Current: " .. (CurrentHeadband or "None"))
+                print("Next: " .. NextHeadband)
+                
+                -- Auto attack to train
+                if Enabled.AutoClick then
+                    mouse1press()
+                    wait(0.1)
+                    mouse1release()
+                end
+            else
+                print("Sharkman Master not found!")
+            end
+            
+            wait(2) -- Prevent spamming
+        end)
+    else
+        if SharkmanConnection then
+            SharkmanConnection:Disconnect()
+        end
+    end
+end
+
 -- Create Tabs and UI
 local YPosition = 0
 for TabName, _ in pairs(Tabs) do
@@ -563,7 +589,7 @@ local CombatTab = CreateTab("Combat")
 local MovementTab = CreateTab("Movement")
 local VisualsTab = CreateTab("Visuals")
 local FarmingTab = CreateTab("Farming")
-local SharkmanTab = CreateTab("Sharkman") -- New tab
+local SharkmanTab = CreateTab("Sharkman")
 local MiscTab = CreateTab("Misc")
 
 -- Combat Tab
@@ -585,29 +611,16 @@ CreateDropdown("Select Material", FarmingTab, FarmMaterials, function(Material)
     SelectedMaterial = Material
 end)
 
--- Sharkman Tab (NEW)
+-- Sharkman Tab
 CreateToggle("Sharkman Farm", SharkmanTab, SharkmanFarmFunction)
+CreateLabel("Headbands Progression:", SharkmanTab)
+for i, Headband in ipairs(HeadbandsRequired) do
+    CreateLabel(i .. ". " .. Headband, SharkmanTab)
+end
 
-local WinsLabel = CreateLabel("Wins: 0/8", SharkmanTab)
-local AttemptsLabel = CreateLabel("Attempts: 0", SharkmanTab)
-
-local ResetButton = Instance.new("TextButton")
-ResetButton.Size = UDim2.new(1, -20, 0, 25)
-ResetButton.Position = UDim2.new(0, 10, 0, 60)
-ResetButton.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
-ResetButton.Text = "Reset Counter"
-ResetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-ResetButton.Font = Enum.Font.Gotham
-ResetButton.TextSize = 12
-ResetButton.Parent = SharkmanTab
-
-ResetButton.MouseButton1Click:Connect(function()
-    SharkmanWins = 0
-    SharkmanAttempts = 0
-    WinsLabel.Text = "Wins: 0/8"
-    AttemptsLabel.Text = "Attempts: 0"
-    print("Счетчик сброшен")
-end)
+-- Status label for Sharkman progress
+local StatusLabel = CreateLabel("Status: Ready", SharkmanTab)
+StatusLabel.Name = "StatusLabel"
 
 -- Misc Tab
 local UnloadButton = Instance.new("TextButton")
@@ -625,7 +638,7 @@ UnloadButton.MouseButton1Click:Connect(function()
     for _, Connection in pairs(Connections) do
         Connection:Disconnect()
     end
-    for _, Connection in pairs({FarmConnection, ClickConnection, NoclipConnection, FlyConnection, MaterialFarmConnection, SharkmanConnection}) do
+    for _, Connection in pairs({FarmConnection, ClickConnection, NoclipConnection, FlyConnection, SharkmanConnection}) do
         if Connection then
             Connection:Disconnect()
         end
@@ -651,6 +664,22 @@ UserInputService.InputBegan:Connect(function(Input, Processed)
     end
 end)
 
+-- Update Sharkman status
+spawn(function()
+    while wait(2) do
+        if SharkmanTab:FindFirstChild("StatusLabel") then
+            local CurrentHeadband = GetCurrentHeadband()
+            local NextHeadband = GetNextHeadband()
+            
+            if NextHeadband == "COMPLETED" then
+                SharkmanTab.StatusLabel.Text = "Status: COMPLETED! 🎉"
+            else
+                SharkmanTab.StatusLabel.Text = "Status: Current: " .. (CurrentHeadband or "None") .. " | Next: " .. NextHeadband
+            end
+        end
+    end
+end)
+
 -- Character reconnection
 LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
     Character = NewCharacter
@@ -662,11 +691,6 @@ LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
     end
 end)
 
--- Update sharkman stats
-RunService.Heartbeat:Connect(function()
-    WinsLabel.Text = "Wins: " .. SharkmanWins .. "/8"
-    AttemptsLabel.Text = "Attempts: " .. SharkmanAttempts
-end)
-
-print("Deep Hub with Sharkman Farmer loaded successfully! Press R to open menu")
-print("Sharkman Farm feature added - get Headband (Black) automatically!")
+print("Deep Hub loaded successfully! Press R to open menu")
+print("Sharkman Karate progression system activated!")
+print("Headbands order: White → Yellow → Orange → Green → Blue → Purple → Red → Black")
