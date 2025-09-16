@@ -1,4 +1,4 @@
--- Deephub Script for Blox Fruits with Redz Hub features
+-- Deep Hub Script for Blox Fruits
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -13,7 +13,7 @@ local Mouse = LocalPlayer:GetMouse()
 
 -- GUI Creation
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DeephubGui"
+ScreenGui.Name = "DeepHubGui"
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
@@ -34,7 +34,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Title.Text = "Deephub v4.0 - Redz Edition"
+Title.Text = "Deep Hub v5.0"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
@@ -82,7 +82,7 @@ local Tabs = {
     Farming = {Name = "Farming", Color = Color3.fromRGB(220, 180, 60)},
     Sharkman = {Name = "Sharkman", Color = Color3.fromRGB(0, 150, 200)},
     AutoFarm = {Name = "Auto Farm", Color = Color3.fromRGB(180, 100, 100)},
-    Misc = {Name = "Misc", Color = Color3.fromRGB(180, 100, 220)}
+    Raids = {Name = "Raids", Color = Color3.fromRGB(150, 50, 150)}
 }
 
 -- Variables
@@ -99,9 +99,11 @@ local Enabled = {
     AutoClick = false,
     NoClip = false,
     SharkmanFarm = false,
-    InfiniteEnergy = false,
-    AutoGodHuman = false,
-    AutoMaterialFarm = false
+    KillAura = false,
+    WaterWalk = false,
+    AutoRaid = false,
+    AutoMaterialFarm = false,
+    AutoGodHuman = false
 }
 
 local FarmMaterials = {
@@ -135,13 +137,16 @@ local FlyConnection = nil
 local SharkmanConnection = nil
 local MaterialFarmConnection = nil
 local GodHumanConnection = nil
+local KillAuraConnection = nil
+local WaterWalkConnection = nil
+local RaidConnection = nil
 
 -- Character initialization
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
--- Correct Headbands order for Sharkman Karate
+-- Headbands order for Sharkman Karate
 local HeadbandsRequired = {
     "Headband (White)",
     "Headband (Yellow)",
@@ -320,7 +325,7 @@ local function ESPFunction(State)
         local function CreateESP(Character)
             if Character ~= LocalPlayer.Character and not ESPObjects[Character] then
                 local Highlight = Instance.new("Highlight")
-                Highlight.Name = "DeephubESP"
+                Highlight.Name = "DeepHubESP"
                 Highlight.Adornee = Character
                 Highlight.FillColor = Color3.fromRGB(255, 0, 0)
                 Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
@@ -442,15 +447,62 @@ end
 local function AutoClickFunction(State)
     if State then
         ClickConnection = RunService.Heartbeat:Connect(function()
-            if Enabled.AutoClick and AimBotTarget then
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+            if Enabled.AutoClick then
+                mouse1press()
                 wait(0.1)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                mouse1release()
             end
         end)
     else
         if ClickConnection then
             ClickConnection:Disconnect()
+        end
+    end
+end
+
+local function KillAuraFunction(State)
+    if State then
+        KillAuraConnection = RunService.Heartbeat:Connect(function()
+            if not Enabled.KillAura then return end
+            
+            for _, NPC in pairs(Workspace:GetChildren()) do
+                if NPC:FindFirstChild("Humanoid") and NPC:FindFirstChild("HumanoidRootPart") then
+                    if NPC.Humanoid.Health > 0 then
+                        local Distance = (NPC.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+                        if Distance < 20 then
+                            HumanoidRootPart.CFrame = NPC.HumanoidRootPart.CFrame * CFrame.new(0, 0, -5)
+                            if Enabled.AutoClick then
+                                mouse1press()
+                                wait(0.1)
+                                mouse1release()
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        if KillAuraConnection then
+            KillAuraConnection:Disconnect()
+        end
+    end
+end
+
+local function WaterWalkFunction(State)
+    if State then
+        WaterWalkConnection = RunService.Heartbeat:Connect(function()
+            if not Enabled.WaterWalk then return end
+            
+            local Ray = Ray.new(HumanoidRootPart.Position, Vector3.new(0, -10, 0))
+            local Hit, Position = Workspace:FindPartOnRay(Ray, Character)
+            
+            if Hit and Hit.Name:find("Water") or Hit.Name:find("Ocean") then
+                HumanoidRootPart.CFrame = CFrame.new(HumanoidRootPart.Position.X, Position.Y + 3, HumanoidRootPart.Position.Z)
+            end
+        end)
+    else
+        if WaterWalkConnection then
+            WaterWalkConnection:Disconnect()
         end
     end
 end
@@ -482,7 +534,6 @@ local function AutoGodHumanFunction(State)
         GodHumanConnection = RunService.Heartbeat:Connect(function()
             if not Enabled.AutoGodHuman then return end
             
-            -- Auto farm all required materials for God Human
             local GodHumanMaterials = {
                 "Elite Hunter", "Fish Tail", "Scrap Metal", "Magma Ore",
                 "Angel Wings", "Demonic Wings", "Dragon Scale", "Leviathan Scale"
@@ -507,6 +558,35 @@ local function AutoGodHumanFunction(State)
     end
 end
 
+local function AutoRaidFunction(State)
+    if State then
+        RaidConnection = RunService.Heartbeat:Connect(function()
+            if not Enabled.AutoRaid then return end
+            
+            -- Find raid NPCs or objects
+            for _, NPC in pairs(Workspace:GetChildren()) do
+                if NPC.Name:find("Raid") or NPC.Name:find("Boss") then
+                    if NPC:FindFirstChild("HumanoidRootPart") then
+                        local Distance = (NPC.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+                        if Distance < 100 then
+                            HumanoidRootPart.CFrame = NPC.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
+                            if Enabled.AutoClick then
+                                mouse1press()
+                                wait(0.1)
+                                mouse1release()
+                            end
+                        end
+                    end
+                end
+            end
+        end)
+    else
+        if RaidConnection then
+            RaidConnection:Disconnect()
+        end
+    end
+end
+
 -- Sharkman Functions
 local function GetCurrentHeadband()
     local Backpack = LocalPlayer:FindFirstChild("Backpack")
@@ -525,7 +605,6 @@ local function SharkmanFarmFunction(State)
         SharkmanConnection = RunService.Heartbeat:Connect(function()
             if not Enabled.SharkmanFarm then return end
             
-            local Current = GetCurrentHeadband()
             local SharkmanNPC = Workspace:FindFirstChild("Sharkman")
             
             if SharkmanNPC and SharkmanNPC:FindFirstChild("HumanoidRootPart") then
@@ -552,16 +631,18 @@ local VisualsTab = CreateTab("Visuals")
 local FarmingTab = CreateTab("Farming")
 local SharkmanTab = CreateTab("Sharkman")
 local AutoFarmTab = CreateTab("Auto Farm")
-local MiscTab = CreateTab("Misc")
+local RaidsTab = CreateTab("Raids")
 
 -- Combat Tab
 CreateToggle("AimBot", CombatTab, AimBotFunction)
 CreateToggle("AutoClick", CombatTab, AutoClickFunction)
+CreateToggle("KillAura", CombatTab, KillAuraFunction)
 
 -- Movement Tab
 CreateToggle("SpeedHack", MovementTab, SpeedHackFunction)
 CreateToggle("Fly", MovementTab, FlyFunction)
 CreateToggle("Noclip", MovementTab, NoclipFunction)
+CreateToggle("WaterWalk", MovementTab, WaterWalkFunction)
 
 -- Visuals Tab
 CreateToggle("ESP", VisualsTab, ESPFunction)
@@ -580,31 +661,15 @@ CreateDropdown("Select Material", AutoFarmTab, FarmMaterials, function(Material)
 end)
 CreateToggle("Auto God Human", AutoFarmTab, AutoGodHumanFunction)
 
+-- Raids Tab
+CreateToggle("Auto Raid", RaidsTab, AutoRaidFunction)
+
 -- Sharkman Tab
 CreateToggle("Auto Sharkman", SharkmanTab, SharkmanFarmFunction)
 CreateLabel("Headbands Progression:", SharkmanTab)
 for i, Headband in ipairs(HeadbandsRequired) do
     CreateLabel(i .. ". " .. Headband, SharkmanTab)
 end
-
--- Misc Tab
-local UnloadButton = Instance.new("TextButton")
-UnloadButton.Size = UDim2.new(1, -20, 0, 30)
-UnloadButton.Position = UDim2.new(0, 10, 0, 0)
-UnloadButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
-UnloadButton.Text = "Unload Script"
-UnloadButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-UnloadButton.Font = Enum.Font.Gotham
-UnloadButton.TextSize = 14
-UnloadButton.Parent = MiscTab
-
-UnloadButton.MouseButton1Click:Connect(function()
-    ScreenGui:Destroy()
-    for _, Connection in pairs(Connections) do
-        Connection:Disconnect()
-        end
-    end
-end)
 
 -- UI Controls
 CloseButton.MouseButton1Click:Connect(function()
@@ -636,5 +701,6 @@ LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
     end
 end)
 
-print("Redz Hub loaded! Press R to open menu")
+print("Deep Hub loaded successfully! Press R to open menu")
+print("Features: Kill Aura, Water Walk, Auto Raid, Sharkman Farm, and more!")
 ```
