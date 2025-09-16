@@ -1,13 +1,9 @@
--- Deep Hub Script for Blox Fruits
+-- Deep Hub Script for Blox Fruits with Sharkman Fish Battles
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
@@ -34,7 +30,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Title.Text = "Deep Hub v5.0"
+Title.Text = "Deep Hub v3.1 - Sharkman Auto"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
@@ -79,14 +75,12 @@ local Tabs = {
     Combat = {Name = "Combat", Color = Color3.fromRGB(220, 80, 80)},
     Movement = {Name = "Movement", Color = Color3.fromRGB(80, 180, 80)},
     Visuals = {Name = "Visuals", Color = Color3.fromRGB(80, 120, 220)},
-    Farming = {Name = "Farming", Color = Color3.fromRGB(220, 180, 60)},
     Sharkman = {Name = "Sharkman", Color = Color3.fromRGB(0, 150, 200)},
-    AutoFarm = {Name = "Auto Farm", Color = Color3.fromRGB(180, 100, 100)},
-    Raids = {Name = "Raids", Color = Color3.fromRGB(150, 50, 150)}
+    Misc = {Name = "Misc", Color = Color3.fromRGB(180, 100, 220)}
 }
 
 -- Variables
-local CurrentTab = "Combat"
+local CurrentTab = "Sharkman"
 local Connections = {}
 local Enabled = {
     AimBot = false,
@@ -95,61 +89,14 @@ local Enabled = {
     Noclip = false,
     Fly = false,
     ESP = false,
-    AutoFarm = false,
     AutoClick = false,
-    NoClip = false,
-    SharkmanFarm = false,
-    KillAura = false,
-    WaterWalk = false,
-    AutoRaid = false,
-    AutoMaterialFarm = false,
-    AutoGodHuman = false
+    SharkmanAuto = false
 }
 
-local FarmMaterials = {
-    "Elite Hunter",
-    "Fish Tail",
-    "Scrap Metal",
-    "Magma Ore",
-    "Angel Wings",
-    "Demonic Wings",
-    "Dragon Scale",
-    "Leviathan Scale",
-    "Vampire Fang",
-    "Conjured Cocoa",
-    "Gunpowder",
-    "Mini Tusk",
-    "Radioactive Material",
-    "Spikey Trident",
-    "Ectoplasm",
-    "Bones",
-    "Dark Fragment",
-    "God's Chalice"
-}
-
-local SelectedMaterial = "Elite Hunter"
-local AimBotTarget = nil
-local ESPObjects = {}
-local FarmConnection = nil
-local ClickConnection = nil
-local NoclipConnection = nil
-local FlyConnection = nil
-local SharkmanConnection = nil
-local MaterialFarmConnection = nil
-local GodHumanConnection = nil
-local KillAuraConnection = nil
-local WaterWalkConnection = nil
-local RaidConnection = nil
-
--- Character initialization
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-local Humanoid = Character:WaitForChild("Humanoid")
-local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
-
--- Headbands order for Sharkman Karate
+-- Sharkman Headbands progression
 local HeadbandsRequired = {
     "Headband (White)",
-    "Headband (Yellow)",
+    "Headband (Yellow)", 
     "Headband (Orange)",
     "Headband (Green)",
     "Headband (Blue)",
@@ -157,6 +104,17 @@ local HeadbandsRequired = {
     "Headband (Red)",
     "Headband (Black)"
 }
+
+local SharkmanConnection = nil
+local FishBattleConnection = nil
+local CurrentBattleState = "Idle"
+local LastActionTime = 0
+local ActionCooldown = 2
+
+-- Character initialization
+local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
 -- UI Creation Functions
 local function CreateTabButton(TabName, Position)
@@ -191,7 +149,7 @@ local function CreateTab(TabName)
     Tab.Name = TabName
     Tab.Size = UDim2.new(1, 0, 1, 0)
     Tab.BackgroundTransparency = 1
-    Tab.Visible = TabName == "Combat"
+    Tab.Visible = TabName == "Sharkman"
     Tab.Parent = TabsFrame
     
     local Layout = Instance.new("UIListLayout")
@@ -253,343 +211,28 @@ local function CreateLabel(Text, Parent)
     return Label
 end
 
-local function CreateDropdown(Name, Parent, Options, Callback)
-    local DropdownFrame = Instance.new("Frame")
-    DropdownFrame.Size = UDim2.new(1, 0, 0, 40)
-    DropdownFrame.BackgroundTransparency = 1
-    DropdownFrame.Parent = Parent
+-- Sharkman Fish Battle Functions
+local function FindSharkmanMaster()
+    for _, NPC in pairs(Workspace.NPCs:GetChildren()) do
+        if (NPC.Name:find("Sharkman") or NPC.Name:find("Shark") or NPC.Name:find("Master")) and NPC:FindFirstChild("Humanoid") then
+            return NPC
+        end
+    end
     
-    local Title = CreateLabel(Name, DropdownFrame)
+    -- Search in entire workspace as fallback
+    for _, NPC in pairs(Workspace:GetChildren()) do
+        if (NPC.Name:find("Sharkman") or NPC.Name:find("Shark") or NPC.Name:find("Master")) and NPC:FindFirstChild("Humanoid") then
+            return NPC
+        end
+    end
     
-    local DropdownButton = Instance.new("TextButton")
-    DropdownButton.Size = UDim2.new(1, 0, 0, 25)
-    DropdownButton.Position = UDim2.new(0, 0, 0, 20)
-    DropdownButton.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
-    DropdownButton.Text = Options[1]
-    DropdownButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-    DropdownButton.Font = Enum.Font.Gotham
-    DropdownButton.TextSize = 12
-    DropdownButton.Parent = DropdownFrame
-    
-    local Corner = Instance.new("UICorner")
-    Corner.CornerRadius = UDim.new(0, 4)
-    Corner.Parent = DropdownButton
-    
-    DropdownButton.MouseButton1Click:Connect(function()
-        for i, Option in ipairs(Options) do
-            if DropdownButton.Text == Option then
-                local NextOption = Options[(i % #Options) + 1]
-                DropdownButton.Text = NextOption
-                if Callback then
-                    Callback(NextOption)
-                end
-                break
-            end
-        end
-    end)
-    
-    return DropdownFrame
+    return nil
 end
 
--- Functional Functions
-local function AimBotFunction(State)
-    if State then
-        Connections.AimBot = RunService.RenderStepped:Connect(function()
-            local ClosestPlayer = nil
-            local ClosestDistance = math.huge
-            
-            for _, Player in pairs(Players:GetPlayers()) do
-                if Player ~= LocalPlayer and Player.Character and Player.Character:FindFirstChild("Humanoid") and Player.Character.Humanoid.Health > 0 then
-                    local Distance = (Player.Character.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
-                    if Distance < ClosestDistance then
-                        ClosestDistance = Distance
-                        ClosestPlayer = Player
-                    end
-                end
-            end
-            
-            if ClosestPlayer and ClosestPlayer.Character and ClosestPlayer.Character:FindFirstChild("HumanoidRootPart") then
-                AimBotTarget = ClosestPlayer.Character.HumanoidRootPart
-            end
-        end)
-    else
-        if Connections.AimBot then
-            Connections.AimBot:Disconnect()
-        end
-        AimBotTarget = nil
-    end
-end
-
-local function ESPFunction(State)
-    if State then
-        local function CreateESP(Character)
-            if Character ~= LocalPlayer.Character and not ESPObjects[Character] then
-                local Highlight = Instance.new("Highlight")
-                Highlight.Name = "DeepHubESP"
-                Highlight.Adornee = Character
-                Highlight.FillColor = Color3.fromRGB(255, 0, 0)
-                Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-                Highlight.FillTransparency = 0.5
-                Highlight.Parent = Character
-                ESPObjects[Character] = Highlight
-            end
-        end
-        
-        for _, Player in pairs(Players:GetPlayers()) do
-            if Player.Character then
-                CreateESP(Player.Character)
-            end
-        end
-        
-        Connections.ESPAdded = Players.PlayerAdded:Connect(function(Player)
-            Player.CharacterAdded:Connect(function(Character)
-                if Enabled.ESP then
-                    CreateESP(Character)
-                end
-            end)
-        end)
-    else
-        for Character, Highlight in pairs(ESPObjects) do
-            if Highlight then
-                Highlight:Destroy()
-            end
-        end
-        ESPObjects = {}
-        
-        if Connections.ESPAdded then
-            Connections.ESPAdded:Disconnect()
-        end
-    end
-end
-
-local function FlyFunction(State)
-    if State then
-        local BodyGyro = Instance.new("BodyGyro")
-        BodyGyro.P = 1000
-        BodyGyro.D = 100
-        BodyGyro.MaxTorque = Vector3.new(100000, 100000, 100000)
-        BodyGyro.CFrame = HumanoidRootPart.CFrame
-        BodyGyro.Parent = HumanoidRootPart
-        
-        local BodyVelocity = Instance.new("BodyVelocity")
-        BodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        BodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-        BodyVelocity.Parent = HumanoidRootPart
-        
-        FlyConnection = RunService.Heartbeat:Connect(function()
-            if not Enabled.Fly then return end
-            
-            local Camera = Workspace.CurrentCamera
-            BodyGyro.CFrame = Camera.CFrame
-            
-            local FlySpeed = 100
-            local Velocity = Vector3.new(0, 0, 0)
-            
-            if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-                Velocity = Velocity + Camera.CFrame.LookVector * FlySpeed
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-                Velocity = Velocity - Camera.CFrame.LookVector * FlySpeed
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-                Velocity = Velocity - Camera.CFrame.RightVector * FlySpeed
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-                Velocity = Velocity + Camera.CFrame.RightVector * FlySpeed
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                Velocity = Velocity + Vector3.new(0, FlySpeed, 0)
-            end
-            if UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
-                Velocity = Velocity - Vector3.new(0, FlySpeed, 0)
-            end
-            
-            BodyVelocity.Velocity = Velocity
-        end)
-    else
-        if FlyConnection then
-            FlyConnection:Disconnect()
-        end
-        for _, Part in pairs(Character:GetDescendants()) do
-            if Part:IsA("BodyVelocity") or Part:IsA("BodyGyro") then
-                Part:Destroy()
-            end
-        end
-    end
-end
-
-local function NoclipFunction(State)
-    if State then
-        NoclipConnection = RunService.Stepped:Connect(function()
-            if Character then
-                for _, Part in pairs(Character:GetDescendants()) do
-                    if Part:IsA("BasePart") then
-                        Part.CanCollide = false
-                    end
-                end
-            end
-        end)
-    else
-        if NoclipConnection then
-            NoclipConnection:Disconnect()
-        end
-    end
-end
-
-local function SpeedHackFunction(State)
-    if State then
-        Humanoid.WalkSpeed = 50
-    else
-        Humanoid.WalkSpeed = 16
-    end
-end
-
-local function AutoClickFunction(State)
-    if State then
-        ClickConnection = RunService.Heartbeat:Connect(function()
-            if Enabled.AutoClick then
-                mouse1press()
-                wait(0.1)
-                mouse1release()
-            end
-        end)
-    else
-        if ClickConnection then
-            ClickConnection:Disconnect()
-        end
-    end
-end
-
-local function KillAuraFunction(State)
-    if State then
-        KillAuraConnection = RunService.Heartbeat:Connect(function()
-            if not Enabled.KillAura then return end
-            
-            for _, NPC in pairs(Workspace:GetChildren()) do
-                if NPC:FindFirstChild("Humanoid") and NPC:FindFirstChild("HumanoidRootPart") then
-                    if NPC.Humanoid.Health > 0 then
-                        local Distance = (NPC.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
-                        if Distance < 20 then
-                            HumanoidRootPart.CFrame = NPC.HumanoidRootPart.CFrame * CFrame.new(0, 0, -5)
-                            if Enabled.AutoClick then
-                                mouse1press()
-                                wait(0.1)
-                                mouse1release()
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    else
-        if KillAuraConnection then
-            KillAuraConnection:Disconnect()
-        end
-    end
-end
-
-local function WaterWalkFunction(State)
-    if State then
-        WaterWalkConnection = RunService.Heartbeat:Connect(function()
-            if not Enabled.WaterWalk then return end
-            
-            local Ray = Ray.new(HumanoidRootPart.Position, Vector3.new(0, -10, 0))
-            local Hit, Position = Workspace:FindPartOnRay(Ray, Character)
-            
-            if Hit and Hit.Name:find("Water") or Hit.Name:find("Ocean") then
-                HumanoidRootPart.CFrame = CFrame.new(HumanoidRootPart.Position.X, Position.Y + 3, HumanoidRootPart.Position.Z)
-            end
-        end)
-    else
-        if WaterWalkConnection then
-            WaterWalkConnection:Disconnect()
-        end
-    end
-end
-
-local function MaterialFarmFunction(State)
-    if State then
-        MaterialFarmConnection = RunService.Heartbeat:Connect(function()
-            if not Enabled.AutoMaterialFarm then return end
-            
-            for _, Item in pairs(Workspace:GetChildren()) do
-                if Item.Name == SelectedMaterial and Item:IsA("Part") then
-                    local Distance = (Item.Position - HumanoidRootPart.Position).Magnitude
-                    if Distance < 100 then
-                        HumanoidRootPart.CFrame = Item.CFrame
-                        break
-                    end
-                end
-            end
-        end)
-    else
-        if MaterialFarmConnection then
-            MaterialFarmConnection:Disconnect()
-        end
-    end
-end
-
-local function AutoGodHumanFunction(State)
-    if State then
-        GodHumanConnection = RunService.Heartbeat:Connect(function()
-            if not Enabled.AutoGodHuman then return end
-            
-            local GodHumanMaterials = {
-                "Elite Hunter", "Fish Tail", "Scrap Metal", "Magma Ore",
-                "Angel Wings", "Demonic Wings", "Dragon Scale", "Leviathan Scale"
-            }
-            
-            for _, Material in pairs(GodHumanMaterials) do
-                for _, Item in pairs(Workspace:GetChildren()) do
-                    if Item.Name == Material and Item:IsA("Part") then
-                        local Distance = (Item.Position - HumanoidRootPart.Position).Magnitude
-                        if Distance < 100 then
-                            HumanoidRootPart.CFrame = Item.CFrame
-                            return
-                        end
-                    end
-                end
-            end
-        end)
-    else
-        if GodHumanConnection then
-            GodHumanConnection:Disconnect()
-        end
-    end
-end
-
-local function AutoRaidFunction(State)
-    if State then
-        RaidConnection = RunService.Heartbeat:Connect(function()
-            if not Enabled.AutoRaid then return end
-            
-            -- Find raid NPCs or objects
-            for _, NPC in pairs(Workspace:GetChildren()) do
-                if NPC.Name:find("Raid") or NPC.Name:find("Boss") then
-                    if NPC:FindFirstChild("HumanoidRootPart") then
-                        local Distance = (NPC.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
-                        if Distance < 100 then
-                            HumanoidRootPart.CFrame = NPC.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
-                            if Enabled.AutoClick then
-                                mouse1press()
-                                wait(0.1)
-                                mouse1release()
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    else
-        if RaidConnection then
-            RaidConnection:Disconnect()
-        end
-    end
-end
-
--- Sharkman Functions
 local function GetCurrentHeadband()
     local Backpack = LocalPlayer:FindFirstChild("Backpack")
+    local Character = LocalPlayer.Character
+    
     if Backpack then
         for _, Item in pairs(Backpack:GetChildren()) do
             if string.find(Item.Name, "Headband") then
@@ -597,24 +240,151 @@ local function GetCurrentHeadband()
             end
         end
     end
+    
+    if Character then
+        for _, Item in pairs(Character:GetChildren()) do
+            if string.find(Item.Name, "Headband") then
+                return Item.Name
+            end
+        end
+    end
+    
     return nil
 end
 
-local function SharkmanFarmFunction(State)
+local function GetNextHeadband()
+    local Current = GetCurrentHeadband() or "None"
+    
+    for i, Headband in ipairs(HeadbandsRequired) do
+        if Current == Headband then
+            if i < #HeadbandsRequired then
+                return HeadbandsRequired[i + 1]
+            else
+                return "COMPLETED"
+            end
+        end
+    end
+    
+    return HeadbandsRequired[1]
+end
+
+local function ClickAtPosition(x, y)
+    -- Simulate mouse click at screen position
+    mouse1click(x, y)
+end
+
+local function FindAndClickButton(buttonName)
+    local gui = LocalPlayer.PlayerGui:FindFirstChildOfClass("ScreenGui")
+    if not gui then return false end
+    
+    for _, element in pairs(gui:GetDescendants()) do
+        if element:IsA("TextButton") and (element.Text:lower():find(buttonName:lower()) or element.Name:lower():find(buttonName:lower())) then
+            local absPos = element.AbsolutePosition
+            local absSize = element.AbsoluteSize
+            local centerX = absPos.X + absSize.X / 2
+            local centerY = absPos.Y + absSize.Y / 2
+            
+            ClickAtPosition(centerX, centerY)
+            return true
+        end
+    end
+    return false
+end
+
+local function IsDialogOpen()
+    local gui = LocalPlayer.PlayerGui:FindFirstChildOfClass("ScreenGui")
+    if not gui then return false end
+    
+    for _, element in pairs(gui:GetDescendants()) do
+        if element:IsA("TextLabel") and (element.Text:find("Train") or element.Text:find("Sharkman") or element.Text:find("Master")) then
+            return true
+        end
+    end
+    return false
+end
+
+local function IsFishBattleActive()
+    local gui = LocalPlayer.PlayerGui:FindFirstChildOfClass("ScreenGui")
+    if not gui then return false end
+    
+    for _, element in pairs(gui:GetDescendants()) do
+        if element:IsA("TextButton") and (element.Text:find("Attack") or element.Text:find("Dodge") or element.Text:find("Select")) then
+            return true
+        end
+    end
+    return false
+end
+
+local function PerformRandomBattleAction()
+    if math.random(1, 2) == 1 then
+        FindAndClickButton("Attack")
+    else
+        FindAndClickButton("Dodge")
+    end
+end
+
+local function SharkmanAutoFunction(State)
     if State then
         SharkmanConnection = RunService.Heartbeat:Connect(function()
-            if not Enabled.SharkmanFarm then return end
+            if not Enabled.SharkmanAuto then return end
             
-            local SharkmanNPC = Workspace:FindFirstChild("Sharkman")
+            local currentTime = tick()
+            if currentTime - LastActionTime < ActionCooldown then return end
             
-            if SharkmanNPC and SharkmanNPC:FindFirstChild("HumanoidRootPart") then
-                HumanoidRootPart.CFrame = SharkmanNPC.HumanoidRootPart.CFrame * CFrame.new(0, 3, 5)
+            local SharkmanNPC = FindSharkmanMaster()
+            
+            if not SharkmanNPC then
+                print("Sharkman Master not found! Searching...")
+                return
+            end
+            
+            -- Check if we're in dialog or battle
+            if IsDialogOpen() then
+                -- In dialog, click Train options
+                if FindAndClickButton("Train") or FindAndClickButton("Start") or FindAndClickButton("Training") then
+                    LastActionTime = currentTime
+                    CurrentBattleState = "InDialog"
+                    print("Clicked dialog option")
+                end
+            elseif IsFishBattleActive() then
+                -- In fish battle, perform actions
+                PerformRandomBattleAction()
+                LastActionTime = currentTime
+                CurrentBattleState = "InBattle"
+                print("Performed battle action")
+            else
+                -- Not in dialog or battle, move to Sharkman and interact
+                local distance = (SharkmanNPC.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
+                
+                if distance > 10 then
+                    -- Move closer to Sharkman
+                    HumanoidRootPart.CFrame = SharkmanNPC.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
+                    CurrentBattleState = "MovingToNPC"
+                    print("Moving to Sharkman Master")
+                else
+                    -- Close enough, try to interact
+                    HumanoidRootPart.CFrame = CFrame.new(HumanoidRootPart.Position, SharkmanNPC.HumanoidRootPart.Position)
+                    
+                    -- Click on NPC to start dialog
+                    local npcHead = SharkmanNPC:FindFirstChild("Head")
+                    if npcHead then
+                        local screenPoint = Workspace.CurrentCamera:WorldToViewportPoint(npcHead.Position)
+                        if screenPoint.Z > 0 then
+                            ClickAtPosition(screenPoint.X, screenPoint.Y)
+                            LastActionTime = currentTime
+                            CurrentBattleState = "Interacting"
+                            print("Clicked on Sharkman Master")
+                        end
+                    end
+                end
             end
         end)
     else
         if SharkmanConnection then
             SharkmanConnection:Disconnect()
         end
+        CurrentBattleState = "Idle"
+        print("Sharkman Auto disabled")
     end
 end
 
@@ -628,48 +398,89 @@ end
 local CombatTab = CreateTab("Combat")
 local MovementTab = CreateTab("Movement")
 local VisualsTab = CreateTab("Visuals")
-local FarmingTab = CreateTab("Farming")
 local SharkmanTab = CreateTab("Sharkman")
-local AutoFarmTab = CreateTab("Auto Farm")
-local RaidsTab = CreateTab("Raids")
+local MiscTab = CreateTab("Misc")
 
 -- Combat Tab
-CreateToggle("AimBot", CombatTab, AimBotFunction)
-CreateToggle("AutoClick", CombatTab, AutoClickFunction)
-CreateToggle("KillAura", CombatTab, KillAuraFunction)
+CreateToggle("AimBot", CombatTab, function(State) 
+    Enabled.AimBot = State
+    print("AimBot: " .. tostring(State))
+end)
+
+CreateToggle("AutoClick", CombatTab, function(State) 
+    Enabled.AutoClick = State
+    print("AutoClick: " .. tostring(State))
+end)
 
 -- Movement Tab
-CreateToggle("SpeedHack", MovementTab, SpeedHackFunction)
-CreateToggle("Fly", MovementTab, FlyFunction)
-CreateToggle("Noclip", MovementTab, NoclipFunction)
-CreateToggle("WaterWalk", MovementTab, WaterWalkFunction)
+CreateToggle("SpeedHack", MovementTab, function(State)
+    Enabled.SpeedHack = State
+    if State then
+        Humanoid.WalkSpeed = 50
+    else
+        Humanoid.WalkSpeed = 16
+    end
+    print("SpeedHack: " .. tostring(State))
+end)
+
+CreateToggle("Fly", MovementTab, function(State) 
+    Enabled.Fly = State
+    print("Fly: " .. tostring(State))
+end)
+
+CreateToggle("Noclip", MovementTab, function(State) 
+    Enabled.Noclip = State
+    print("NoClip: " .. tostring(State))
+end)
 
 -- Visuals Tab
-CreateToggle("ESP", VisualsTab, ESPFunction)
-CreateToggle("WallHack", VisualsTab, function(State)
-    if State then
-        Lighting.GlobalShadows = false
-    else
-        Lighting.GlobalShadows = true
-    end
+CreateToggle("ESP", VisualsTab, function(State) 
+    Enabled.ESP = State
+    print("ESP: " .. tostring(State))
 end)
 
--- Auto Farm Tab
-CreateToggle("Auto Material Farm", AutoFarmTab, MaterialFarmFunction)
-CreateDropdown("Select Material", AutoFarmTab, FarmMaterials, function(Material)
-    SelectedMaterial = Material
+CreateToggle("WallHack", VisualsTab, function(State) 
+    Enabled.WallHack = State
+    print("WallHack: " .. tostring(State))
 end)
-CreateToggle("Auto God Human", AutoFarmTab, AutoGodHumanFunction)
-
--- Raids Tab
-CreateToggle("Auto Raid", RaidsTab, AutoRaidFunction)
 
 -- Sharkman Tab
-CreateToggle("Auto Sharkman", SharkmanTab, SharkmanFarmFunction)
+CreateToggle("Sharkman Auto", SharkmanTab, SharkmanAutoFunction)
 CreateLabel("Headbands Progression:", SharkmanTab)
 for i, Headband in ipairs(HeadbandsRequired) do
     CreateLabel(i .. ". " .. Headband, SharkmanTab)
 end
+
+-- Status label for Sharkman progress
+local StatusLabel = CreateLabel("Status: Ready", SharkmanTab)
+StatusLabel.Name = "StatusLabel"
+StatusLabel.Size = UDim2.new(1, 0, 0, 30)
+
+local BattleStatusLabel = CreateLabel("State: Idle", SharkmanTab)
+BattleStatusLabel.Name = "BattleStatusLabel"
+BattleStatusLabel.Size = UDim2.new(1, 0, 0, 30)
+
+-- Misc Tab
+local UnloadButton = Instance.new("TextButton")
+UnloadButton.Size = UDim2.new(1, -20, 0, 30)
+UnloadButton.Position = UDim2.new(0, 10, 0, 0)
+UnloadButton.BackgroundColor3 = Color3.fromRGB(180, 60, 60)
+UnloadButton.Text = "Unload Script"
+UnloadButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+UnloadButton.Font = Enum.Font.Gotham
+UnloadButton.TextSize = 14
+UnloadButton.Parent = MiscTab
+
+UnloadButton.MouseButton1Click:Connect(function()
+    ScreenGui:Destroy()
+    for _, Connection in pairs(Connections) do
+        Connection:Disconnect()
+    end
+    if SharkmanConnection then
+        SharkmanConnection:Disconnect()
+    end
+    print("Script unloaded")
+end)
 
 -- UI Controls
 CloseButton.MouseButton1Click:Connect(function()
@@ -690,17 +501,37 @@ UserInputService.InputBegan:Connect(function(Input, Processed)
     end
 end)
 
+-- Update Sharkman status
+spawn(function()
+    while wait(1) do
+        if SharkmanTab:FindFirstChild("StatusLabel") and SharkmanTab:FindFirstChild("BattleStatusLabel") then
+            local CurrentHeadband = GetCurrentHeadband()
+            local NextHeadband = GetNextHeadband()
+            
+            if NextHeadband == "COMPLETED" then
+                SharkmanTab.StatusLabel.Text = "Status: COMPLETED! 🎉"
+            else
+                SharkmanTab.StatusLabel.Text = "Status: Current: " .. (CurrentHeadband or "None") .. " | Next: " .. NextHeadband
+            end
+            
+            SharkmanTab.BattleStatusLabel.Text = "State: " .. CurrentBattleState
+        end
+    end
+end)
+
 -- Character reconnection
 LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
     Character = NewCharacter
     Humanoid = NewCharacter:WaitForChild("Humanoid")
     HumanoidRootPart = NewCharacter:WaitForChild("HumanoidRootPart")
-    
-    if Enabled.SpeedHack then
-        Humanoid.WalkSpeed = 50
-    end
+    print("Character reconnected")
 end)
 
-print("Deep Hub loaded successfully! Press R to open menu")
-print("Features: Kill Aura, Water Walk, Auto Raid, Sharkman Farm, and more!")
-```
+print("Deep Hub Sharkman Auto loaded!")
+print("Press R to open menu")
+print("Sharkman Auto Features:")
+print("- Auto find Sharkman Master")
+print("- Auto interact with NPC")
+print("- Auto click dialog options")
+print("- Auto perform battle actions")
+print("- Headband progression tracking")
