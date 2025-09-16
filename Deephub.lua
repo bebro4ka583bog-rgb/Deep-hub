@@ -1,25 +1,21 @@
--- Deephub Script for Blox Fruits with Redz Hub features
+-- Deep Hub Script for Blox Fruits
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 local Lighting = game:GetService("Lighting")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local HttpService = game:GetService("HttpService")
-local VirtualInputManager = game:GetService("VirtualInputManager")
 local LocalPlayer = Players.LocalPlayer
 local Mouse = LocalPlayer:GetMouse()
 
 -- GUI Creation
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "DeephubGui"
+ScreenGui.Name = "DeepHubGui"
 ScreenGui.Parent = game.CoreGui
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 500, 0, 500)
-MainFrame.Position = UDim2.new(0.5, -250, 0.5, -250)
+MainFrame.Size = UDim2.new(0, 450, 0, 400)
+MainFrame.Position = UDim2.new(0.5, -225, 0.5, -200)
 MainFrame.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
 MainFrame.BorderSizePixel = 0
 MainFrame.Active = true
@@ -34,7 +30,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Title.Text = "Deephub v4.0 - Redz Edition"
+Title.Text = "Deep Hub v2.0"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
@@ -62,14 +58,14 @@ ToggleButton.Visible = false
 ToggleButton.Parent = ScreenGui
 
 local TabButtonsFrame = Instance.new("Frame")
-TabButtonsFrame.Size = UDim2.new(0, 130, 0, 410)
+TabButtonsFrame.Size = UDim2.new(0, 120, 0, 310)
 TabButtonsFrame.Position = UDim2.new(0, 10, 0, 50)
 TabButtonsFrame.BackgroundTransparency = 1
 TabButtonsFrame.Parent = MainFrame
 
 local TabsFrame = Instance.new("Frame")
-TabsFrame.Size = UDim2.new(0, 340, 0, 410)
-TabsFrame.Position = UDim2.new(0, 150, 0, 50)
+TabsFrame.Size = UDim2.new(0, 300, 0, 310)
+TabsFrame.Position = UDim2.new(0, 130, 0, 50)
 TabsFrame.BackgroundTransparency = 1
 TabsFrame.ClipsDescendants = true
 TabsFrame.Parent = MainFrame
@@ -80,8 +76,6 @@ local Tabs = {
     Movement = {Name = "Movement", Color = Color3.fromRGB(80, 180, 80)},
     Visuals = {Name = "Visuals", Color = Color3.fromRGB(80, 120, 220)},
     Farming = {Name = "Farming", Color = Color3.fromRGB(220, 180, 60)},
-    Sharkman = {Name = "Sharkman", Color = Color3.fromRGB(0, 150, 200)},
-    AutoFarm = {Name = "Auto Farm", Color = Color3.fromRGB(180, 100, 100)},
     Misc = {Name = "Misc", Color = Color3.fromRGB(180, 100, 220)}
 }
 
@@ -96,67 +90,44 @@ local Enabled = {
     Fly = false,
     ESP = false,
     AutoFarm = false,
-    AutoClick = false,
-    NoClip = false,
-    SharkmanFarm = false,
-    InfiniteEnergy = false,
-    AutoGodHuman = false,
-    AutoMaterialFarm = false
+    AutoClick = false
 }
 
+-- Real Blox Fruits materials
 local FarmMaterials = {
-    "Elite Hunter",
+    "Magma Ore",
     "Fish Tail",
     "Scrap Metal",
-    "Magma Ore",
-    "Angel Wings",
-    "Demonic Wings",
     "Dragon Scale",
     "Leviathan Scale",
-    "Vampire Fang",
-    "Conjured Cocoa",
-    "Gunpowder",
-    "Mini Tusk",
     "Radioactive Material",
-    "Spikey Trident",
     "Ectoplasm",
     "Bones",
     "Dark Fragment",
-    "God's Chalice"
+    "Angel Wings",
+    "Demonic Wings",
+    "Mini Tusk",
+    "Conjured Cocoa",
+    "Gunpowder"
 }
 
-local SelectedMaterial = "Elite Hunter"
+local SelectedMaterial = "Magma Ore"
 local AimBotTarget = nil
 local ESPObjects = {}
 local FarmConnection = nil
 local ClickConnection = nil
 local NoclipConnection = nil
 local FlyConnection = nil
-local SharkmanConnection = nil
-local MaterialFarmConnection = nil
-local GodHumanConnection = nil
 
 -- Character initialization
 local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
 local Humanoid = Character:WaitForChild("Humanoid")
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
--- Correct Headbands order for Sharkman Karate
-local HeadbandsRequired = {
-    "Headband (White)",
-    "Headband (Yellow)",
-    "Headband (Orange)",
-    "Headband (Green)",
-    "Headband (Blue)",
-    "Headband (Purple)",
-    "Headband (Red)",
-    "Headband (Black)"
-}
-
 -- UI Creation Functions
 local function CreateTabButton(TabName, Position)
     local Button = Instance.new("TextButton")
-    Button.Size = UDim2.new(0, 120, 0, 30)
+    Button.Size = UDim2.new(0, 110, 0, 30)
     Button.Position = Position
     Button.BackgroundColor3 = Tabs[TabName].Color
     Button.Text = TabName
@@ -203,7 +174,7 @@ local function CreateToggle(Name, Parent, Callback)
     ToggleFrame.Parent = Parent
     
     local ToggleButton = Instance.new("TextButton")
-    ToggleButton.Size = UDim2.new(0, 160, 0, 30)
+    ToggleButton.Size = UDim2.new(0, 140, 0, 30)
     ToggleButton.Position = UDim2.new(0, 0, 0, 0)
     ToggleButton.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
     ToggleButton.Text = Name
@@ -320,7 +291,7 @@ local function ESPFunction(State)
         local function CreateESP(Character)
             if Character ~= LocalPlayer.Character and not ESPObjects[Character] then
                 local Highlight = Instance.new("Highlight")
-                Highlight.Name = "DeephubESP"
+                Highlight.Name = "DeepHubESP"
                 Highlight.Adornee = Character
                 Highlight.FillColor = Color3.fromRGB(255, 0, 0)
                 Highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
@@ -359,25 +330,11 @@ end
 
 local function FlyFunction(State)
     if State then
-        local BodyGyro = Instance.new("BodyGyro")
-        BodyGyro.P = 1000
-        BodyGyro.D = 100
-        BodyGyro.MaxTorque = Vector3.new(100000, 100000, 100000)
-        BodyGyro.CFrame = HumanoidRootPart.CFrame
-        BodyGyro.Parent = HumanoidRootPart
-        
-        local BodyVelocity = Instance.new("BodyVelocity")
-        BodyVelocity.Velocity = Vector3.new(0, 0, 0)
-        BodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-        BodyVelocity.Parent = HumanoidRootPart
-        
         FlyConnection = RunService.Heartbeat:Connect(function()
             if not Enabled.Fly then return end
             
             local Camera = Workspace.CurrentCamera
-            BodyGyro.CFrame = Camera.CFrame
-            
-            local FlySpeed = 100
+            local FlySpeed = 50
             local Velocity = Vector3.new(0, 0, 0)
             
             if UserInputService:IsKeyDown(Enum.KeyCode.W) then
@@ -399,17 +356,13 @@ local function FlyFunction(State)
                 Velocity = Velocity - Vector3.new(0, FlySpeed, 0)
             end
             
-            BodyVelocity.Velocity = Velocity
+            HumanoidRootPart.Velocity = Velocity
         end)
     else
         if FlyConnection then
             FlyConnection:Disconnect()
         end
-        for _, Part in pairs(Character:GetDescendants()) do
-            if Part:IsA("BodyVelocity") or Part:IsA("BodyGyro") then
-                Part:Destroy()
-            end
-        end
+        HumanoidRootPart.Velocity = Vector3.new(0, 0, 0)
     end
 end
 
@@ -442,10 +395,10 @@ end
 local function AutoClickFunction(State)
     if State then
         ClickConnection = RunService.Heartbeat:Connect(function()
-            if Enabled.AutoClick and AimBotTarget then
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+            if Enabled.AutoClick then
+                mouse1press()
                 wait(0.1)
-                VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                mouse1release()
             end
         end)
     else
@@ -458,12 +411,29 @@ end
 local function MaterialFarmFunction(State)
     if State then
         MaterialFarmConnection = RunService.Heartbeat:Connect(function()
-            if not Enabled.AutoMaterialFarm then return end
+            if not Enabled.AutoFarm then return end
             
-            for _, Item in pairs(Workspace:GetChildren()) do
-                if Item.Name == SelectedMaterial and Item:IsA("Part") then
-                    local Distance = (Item.Position - HumanoidRootPart.Position).Magnitude
+            -- Farm NPCs for materials
+            for _, NPC in pairs(Workspace:GetChildren()) do
+                if NPC:FindFirstChild("Humanoid") and NPC:FindFirstChild("HumanoidRootPart") and NPC.Humanoid.Health > 0 then
+                    local Distance = (NPC.HumanoidRootPart.Position - HumanoidRootPart.Position).Magnitude
                     if Distance < 100 then
+                        HumanoidRootPart.CFrame = NPC.HumanoidRootPart.CFrame * CFrame.new(0, 0, 5)
+                        if Enabled.AutoClick then
+                            mouse1press()
+                            wait(0.1)
+                            mouse1release()
+                        end
+                        break
+                    end
+                end
+            end
+            
+            -- Farm actual material items
+            for _, Item in pairs(Workspace:GetChildren()) do
+                if table.find(FarmMaterials, Item.Name) and Item:IsA("Part") then
+                    local Distance = (Item.Position - HumanoidRootPart.Position).Magnitude
+                    if Distance < 50 then
                         HumanoidRootPart.CFrame = Item.CFrame
                         break
                     end
@@ -477,64 +447,24 @@ local function MaterialFarmFunction(State)
     end
 end
 
-local function AutoGodHumanFunction(State)
+local function WallHackFunction(State)
     if State then
-        GodHumanConnection = RunService.Heartbeat:Connect(function()
-            if not Enabled.AutoGodHuman then return end
-            
-            -- Auto farm all required materials for God Human
-            local GodHumanMaterials = {
-                "Elite Hunter", "Fish Tail", "Scrap Metal", "Magma Ore",
-                "Angel Wings", "Demonic Wings", "Dragon Scale", "Leviathan Scale"
-            }
-            
-            for _, Material in pairs(GodHumanMaterials) do
-                for _, Item in pairs(Workspace:GetChildren()) do
-                    if Item.Name == Material and Item:IsA("Part") then
-                        local Distance = (Item.Position - HumanoidRootPart.Position).Magnitude
-                        if Distance < 100 then
-                            HumanoidRootPart.CFrame = Item.CFrame
-                            return
-                        end
-                    end
+        Lighting.GlobalShadows = false
+        for _, Part in pairs(Workspace:GetDescendants()) do
+            if Part:IsA("Part") or Part:IsA("MeshPart") then
+                if Part.Transparency < 0.5 then
+                    Part.Transparency = 0.5
                 end
             end
-        end)
-    else
-        if GodHumanConnection then
-            GodHumanConnection:Disconnect()
         end
-    end
-end
-
--- Sharkman Functions
-local function GetCurrentHeadband()
-    local Backpack = LocalPlayer:FindFirstChild("Backpack")
-    if Backpack then
-        for _, Item in pairs(Backpack:GetChildren()) do
-            if string.find(Item.Name, "Headband") then
-                return Item.Name
-            end
-        end
-    end
-    return nil
-end
-
-local function SharkmanFarmFunction(State)
-    if State then
-        SharkmanConnection = RunService.Heartbeat:Connect(function()
-            if not Enabled.SharkmanFarm then return end
-            
-            local Current = GetCurrentHeadband()
-            local SharkmanNPC = Workspace:FindFirstChild("Sharkman")
-            
-            if SharkmanNPC and SharkmanNPC:FindFirstChild("HumanoidRootPart") then
-                HumanoidRootPart.CFrame = SharkmanNPC.HumanoidRootPart.CFrame * CFrame.new(0, 3, 5)
-            end
-        end)
     else
-        if SharkmanConnection then
-            SharkmanConnection:Disconnect()
+        Lighting.GlobalShadows = true
+        for _, Part in pairs(Workspace:GetDescendants()) do
+            if Part:IsA("Part") or Part:IsA("MeshPart") then
+                if Part.Transparency == 0.5 then
+                    Part.Transparency = 0
+                end
+            end
         end
     end
 end
@@ -550,8 +480,6 @@ local CombatTab = CreateTab("Combat")
 local MovementTab = CreateTab("Movement")
 local VisualsTab = CreateTab("Visuals")
 local FarmingTab = CreateTab("Farming")
-local SharkmanTab = CreateTab("Sharkman")
-local AutoFarmTab = CreateTab("Auto Farm")
 local MiscTab = CreateTab("Misc")
 
 -- Combat Tab
@@ -565,27 +493,13 @@ CreateToggle("Noclip", MovementTab, NoclipFunction)
 
 -- Visuals Tab
 CreateToggle("ESP", VisualsTab, ESPFunction)
-CreateToggle("WallHack", VisualsTab, function(State)
-    if State then
-        Lighting.GlobalShadows = false
-    else
-        Lighting.GlobalShadows = true
-    end
-end)
+CreateToggle("WallHack", VisualsTab, WallHackFunction)
 
--- Auto Farm Tab
-CreateToggle("Auto Material Farm", AutoFarmTab, MaterialFarmFunction)
-CreateDropdown("Select Material", AutoFarmTab, FarmMaterials, function(Material)
+-- Farming Tab
+CreateToggle("Auto Farm", FarmingTab, MaterialFarmFunction)
+CreateDropdown("Select Material", FarmingTab, FarmMaterials, function(Material)
     SelectedMaterial = Material
 end)
-CreateToggle("Auto God Human", AutoFarmTab, AutoGodHumanFunction)
-
--- Sharkman Tab
-CreateToggle("Auto Sharkman", SharkmanTab, SharkmanFarmFunction)
-CreateLabel("Headbands Progression:", SharkmanTab)
-for i, Headband in ipairs(HeadbandsRequired) do
-    CreateLabel(i .. ". " .. Headband, SharkmanTab)
-end
 
 -- Misc Tab
 local UnloadButton = Instance.new("TextButton")
@@ -602,6 +516,10 @@ UnloadButton.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
     for _, Connection in pairs(Connections) do
         Connection:Disconnect()
+    end
+    for _, Connection in pairs({FarmConnection, ClickConnection, NoclipConnection, FlyConnection, MaterialFarmConnection}) do
+        if Connection then
+            Connection:Disconnect()
         end
     end
 end)
@@ -636,6 +554,5 @@ LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
     end
 end)
 
-print("Redz Hub loaded! Press R to open menu")
-```
-         
+print("Deep Hub loaded successfully! Press R to open menu")
+print("Real materials available: Magma Ore, Fish Tail, Scrap Metal, Dragon Scale, etc.")
