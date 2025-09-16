@@ -1,4 +1,4 @@
--- Deep Hub Script for Blox Fruits
+-- Deep Hub Script for Blox Fruits with Sharkman Farmer
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -30,7 +30,7 @@ local Title = Instance.new("TextLabel")
 Title.Size = UDim2.new(1, 0, 0, 40)
 Title.Position = UDim2.new(0, 0, 0, 0)
 Title.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
-Title.Text = "Deep Hub v2.0"
+Title.Text = "Deep Hub v2.0 - Sharkman Farmer"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.Font = Enum.Font.GothamBold
 Title.TextSize = 18
@@ -76,6 +76,7 @@ local Tabs = {
     Movement = {Name = "Movement", Color = Color3.fromRGB(80, 180, 80)},
     Visuals = {Name = "Visuals", Color = Color3.fromRGB(80, 120, 220)},
     Farming = {Name = "Farming", Color = Color3.fromRGB(220, 180, 60)},
+    Sharkman = {Name = "Sharkman", Color = Color3.fromRGB(0, 150, 200)}, -- New tab
     Misc = {Name = "Misc", Color = Color3.fromRGB(180, 100, 220)}
 }
 
@@ -90,7 +91,8 @@ local Enabled = {
     Fly = false,
     ESP = false,
     AutoFarm = false,
-    AutoClick = false
+    AutoClick = false,
+    SharkmanFarm = false  -- New variable
 }
 
 -- Real Blox Fruits materials
@@ -110,6 +112,12 @@ local FarmMaterials = {
     "Conjured Cocoa",
     "Gunpowder"
 }
+
+-- Sharkman Farm variables
+local SharkmanWins = 0
+local SharkmanAttempts = 0
+local SharkmanConnection = nil
+local FishBoxPosition = Vector3.new(-1250, 50, 750) -- Adjust based on your server
 
 local SelectedMaterial = "Magma Ore"
 local AimBotTarget = nil
@@ -257,7 +265,82 @@ local function CreateDropdown(Name, Parent, Options, Callback)
     return DropdownFrame
 end
 
--- Functional Functions
+-- Sharkman Farm Functions
+local function FindSharkmanMaster()
+    for _, npc in ipairs(Workspace.NPCs:GetChildren()) do
+        if npc.Name == "Sharkman Master" and npc:FindFirstChild("Humanoid") then
+            return npc
+        end
+    end
+    return nil
+end
+
+local function TeleportTo(position)
+    pcall(function()
+        if Character and Character:FindFirstChild("HumanoidRootPart") then
+            Character.HumanoidRootPart.CFrame = CFrame.new(position)
+        end
+    end)
+end
+
+local function AttackSharkman(target)
+    if not target or not target:FindFirstChild("Humanoid") then return false end
+    
+    pcall(function()
+        -- Use high damage to kill quickly
+        target.Humanoid:TakeDamage(10000)
+    end)
+    
+    wait(1)
+    return not target:FindFirstChild("Humanoid") or target.Humanoid.Health <= 0
+end
+
+local function SharkmanFarmFunction(State)
+    if State then
+        SharkmanConnection = RunService.Heartbeat:Connect(function()
+            if not Enabled.SharkmanFarm then return end
+            
+            -- Teleport to Fish Box
+            TeleportTo(FishBoxPosition)
+            wait(2)
+            
+            -- Find Sharkman Master
+            local master = FindSharkmanMaster()
+            
+            if master then
+                -- Attack the master
+                local success = AttackSharkman(master)
+                SharkmanAttempts = SharkmanAttempts + 1
+                
+                if success then
+                    SharkmanWins = SharkmanWins + 1
+                    print("✅ Sharkman Master defeated! Wins: " .. SharkmanWins .. "/8")
+                    
+                    if SharkmanWins >= 8 then
+                        print("🎉 Headband (Black) получен!")
+                        Enabled.SharkmanFarm = false
+                        if SharkmanConnection then
+                            SharkmanConnection:Disconnect()
+                        end
+                    end
+                else
+                    SharkmanWins = 0
+                    print("❌ Поражение! Сброс счетчика побед")
+                end
+            else
+                print("🔍 Sharkman Master не найден, ожидание...")
+            end
+            
+            wait(3) -- Cooldown between attempts
+        end)
+    else
+        if SharkmanConnection then
+            SharkmanConnection:Disconnect()
+        end
+    end
+end
+
+-- Functional Functions (existing functions remain the same)
 local function AimBotFunction(State)
     if State then
         Connections.AimBot = RunService.RenderStepped:Connect(function()
@@ -480,6 +563,7 @@ local CombatTab = CreateTab("Combat")
 local MovementTab = CreateTab("Movement")
 local VisualsTab = CreateTab("Visuals")
 local FarmingTab = CreateTab("Farming")
+local SharkmanTab = CreateTab("Sharkman") -- New tab
 local MiscTab = CreateTab("Misc")
 
 -- Combat Tab
@@ -501,6 +585,30 @@ CreateDropdown("Select Material", FarmingTab, FarmMaterials, function(Material)
     SelectedMaterial = Material
 end)
 
+-- Sharkman Tab (NEW)
+CreateToggle("Sharkman Farm", SharkmanTab, SharkmanFarmFunction)
+
+local WinsLabel = CreateLabel("Wins: 0/8", SharkmanTab)
+local AttemptsLabel = CreateLabel("Attempts: 0", SharkmanTab)
+
+local ResetButton = Instance.new("TextButton")
+ResetButton.Size = UDim2.new(1, -20, 0, 25)
+ResetButton.Position = UDim2.new(0, 10, 0, 60)
+ResetButton.BackgroundColor3 = Color3.fromRGB(80, 80, 120)
+ResetButton.Text = "Reset Counter"
+ResetButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+ResetButton.Font = Enum.Font.Gotham
+ResetButton.TextSize = 12
+ResetButton.Parent = SharkmanTab
+
+ResetButton.MouseButton1Click:Connect(function()
+    SharkmanWins = 0
+    SharkmanAttempts = 0
+    WinsLabel.Text = "Wins: 0/8"
+    AttemptsLabel.Text = "Attempts: 0"
+    print("Счетчик сброшен")
+end)
+
 -- Misc Tab
 local UnloadButton = Instance.new("TextButton")
 UnloadButton.Size = UDim2.new(1, -20, 0, 30)
@@ -517,7 +625,7 @@ UnloadButton.MouseButton1Click:Connect(function()
     for _, Connection in pairs(Connections) do
         Connection:Disconnect()
     end
-    for _, Connection in pairs({FarmConnection, ClickConnection, NoclipConnection, FlyConnection, MaterialFarmConnection}) do
+    for _, Connection in pairs({FarmConnection, ClickConnection, NoclipConnection, FlyConnection, MaterialFarmConnection, SharkmanConnection}) do
         if Connection then
             Connection:Disconnect()
         end
@@ -554,5 +662,11 @@ LocalPlayer.CharacterAdded:Connect(function(NewCharacter)
     end
 end)
 
-print("Deep Hub loaded successfully! Press R to open menu")
-print("Real materials available: Magma Ore, Fish Tail, Scrap Metal, Dragon Scale, etc.")
+-- Update sharkman stats
+RunService.Heartbeat:Connect(function()
+    WinsLabel.Text = "Wins: " .. SharkmanWins .. "/8"
+    AttemptsLabel.Text = "Attempts: " .. SharkmanAttempts
+end)
+
+print("Deep Hub with Sharkman Farmer loaded successfully! Press R to open menu")
+print("Sharkman Farm feature added - get Headband (Black) automatically!")
